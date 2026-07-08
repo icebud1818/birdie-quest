@@ -65,6 +65,13 @@ export default function RoundDetail() {
         </div>
       </div>
 
+      {round.notes && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="muted" style={{ marginBottom: 6 }}>Notes</div>
+          <div style={{ whiteSpace: 'pre-wrap' }}>{round.notes}</div>
+        </div>
+      )}
+
       <div className="card" style={{ marginTop: 16, overflowX: 'auto' }}>
         <table className="holes-table">
           <thead>
@@ -92,7 +99,7 @@ export default function RoundDetail() {
                   </td>
                   <td>{h.putts ?? '—'}</td>
                   <td>{h.ob ?? '—'}</td>
-                  <td>{h.gir ? '✓' : '—'}</td>
+                  <td>{h.gir ? <span style={{ color: '#22c55e', fontWeight: 600 }}>✓</span> : '—'}</td>
                 </tr>
               )
             })}

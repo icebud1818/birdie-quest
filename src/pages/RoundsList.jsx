@@ -1,15 +1,66 @@
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../data/DataContext.jsx'
 import { holesPlayed, isIncomplete, isParThreeCourse } from '../utils/rounds.js'
 
+// Sort accessors keyed by column. Each returns a comparable value for a round.
+const SORT_ACCESSORS = {
+  date: (r) => r.date || '',
+  course: (r) => (r.courseName || '').toLowerCase(),
+  holes: (r) => r.holes?.length ?? 0,
+  score: (r) => r.totalScore ?? 0,
+  par: (r) => r.totalPar ?? 0,
+  diff: (r) => (r.totalScore ?? 0) - (r.totalPar ?? 0),
+}
+
+// Default direction per column: newest date / worst diff feel natural descending,
+// while course name reads best A→Z.
+const DEFAULT_DESC = {
+  date: true,
+  course: false,
+  holes: true,
+  score: false,
+  par: false,
+  diff: false,
+}
+
 export default function RoundsList() {
   const { rounds, loading } = useData()
+  const [sortKey, setSortKey] = useState('date')
+  const [desc, setDesc] = useState(true)
 
-  // Always show most-recently-played first, regardless of the order local
-  // add/edit operations left the array in.
-  const sorted = [...rounds].sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+  const sorted = useMemo(() => {
+    const accessor = SORT_ACCESSORS[sortKey] || SORT_ACCESSORS.date
+    const dir = desc ? -1 : 1
+    return [...rounds].sort((a, b) => {
+      const av = accessor(a)
+      const bv = accessor(b)
+      if (av < bv) return -1 * dir
+      if (av > bv) return 1 * dir
+      return 0
+    })
+  }, [rounds, sortKey, desc])
+
+  const changeSort = (key) => {
+    if (key === sortKey) {
+      setDesc((d) => !d)
+    } else {
+      setSortKey(key)
+      setDesc(DEFAULT_DESC[key])
+    }
+  }
 
   if (loading) return <div className="container center muted">Loading…</div>
+
+  const Th = ({ column, children }) => (
+    <th
+      onClick={() => changeSort(column)}
+      style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+    >
+      {children}
+      {sortKey === column && <span style={{ marginLeft: 4 }}>{desc ? '▼' : '▲'}</span>}
+    </th>
+  )
 
   return (
     <div className="container">
@@ -28,12 +79,12 @@ export default function RoundsList() {
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Course</th>
-                <th>Holes</th>
-                <th>Score</th>
-                <th>Par</th>
-                <th>Diff</th>
+                <Th column="date">Date</Th>
+                <Th column="course">Course</Th>
+                <Th column="holes">Holes</Th>
+                <Th column="score">Score</Th>
+                <Th column="par">Par</Th>
+                <Th column="diff">Diff</Th>
                 <th></th>
               </tr>
             </thead>

@@ -38,6 +38,7 @@ export default function RoundForm({
     if (initialRound?.holes) return initialRound.holes.map(toFormHole)
     return makeHolesFor(initialCourseId, 18)
   })
+  const [notes, setNotes] = useState(initialRound?.notes || '')
   const [incomplete, setIncomplete] = useState(initialRound?.incomplete === true)
   const [trackStats, setTrackStats] = useState(() =>
     initialRound ? tracksStats(initialRound) : false
@@ -133,6 +134,8 @@ export default function RoundForm({
       incomplete,
       trackStats,
     }
+    const trimmedNotes = notes.trim()
+    if (trimmedNotes) round.notes = trimmedNotes
 
     setBusy(true)
     try {
@@ -239,6 +242,15 @@ export default function RoundForm({
               it just won't affect your putting / GIR / OOB averages.
             </div>
           )}
+          <div style={{ marginTop: 16 }}>
+            <label>Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="How'd it go? Conditions, highlights, things to work on…"
+              rows={4}
+            />
+          </div>
         </div>
 
         <div className="card">
