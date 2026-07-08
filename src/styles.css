@@ -17,9 +17,16 @@
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--bg);
+  background:
+    radial-gradient(900px 480px at 100% -10%, rgba(56, 189, 248, 0.06), transparent 60%),
+    radial-gradient(900px 480px at 0% -10%, rgba(74, 222, 128, 0.06), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 a { color: var(--accent); text-decoration: none; }
@@ -56,31 +63,47 @@ label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 
 .app { min-height: 100vh; display: flex; flex-direction: column; }
 
 .nav {
-  background: var(--panel);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(26, 32, 40, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  padding: 12px 20px;
+  padding: 12px 24px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 4px;
   flex-wrap: wrap;
 }
-.nav .brand { font-weight: 700; font-size: 1.15rem; margin-right: auto; color: var(--text); }
+.nav .brand { font-weight: 700; font-size: 1.15rem; margin-right: auto; color: var(--text); padding: 0; }
 .nav .brand:hover { text-decoration: none; }
 .nav .brand .pulse { color: var(--accent); }
-.nav a { color: var(--muted); }
-.nav a.active { color: var(--text); font-weight: 500; }
+.nav a:not(.brand) {
+  color: var(--muted);
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.nav a:not(.brand):hover { color: var(--text); text-decoration: none; background: var(--panel-2); }
+.nav a.active { color: var(--text); font-weight: 600; background: var(--panel-2); }
 
 .container { max-width: 1000px; margin: 0 auto; padding: 24px 20px; width: 100%; }
 
-h1 { margin: 0 0 20px; font-size: 1.6rem; }
-h2 { margin: 24px 0 12px; font-size: 1.2rem; }
+h1 { margin: 0 0 20px; font-size: 1.9rem; font-weight: 700; letter-spacing: -0.02em; }
+h2 { margin: 30px 0 14px; font-size: 1.15rem; font-weight: 600; letter-spacing: -0.01em; }
+h3 { margin: 20px 0 10px; font-size: 1rem; font-weight: 600; }
+
+.subtitle { color: var(--muted); margin: -12px 0 24px; font-size: 1rem; }
 
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 20px;
   margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
 .grid { display: grid; gap: 12px; }
@@ -91,8 +114,10 @@ h2 { margin: 24px 0 12px; font-size: 1.2rem; }
 }
 
 table { width: 100%; border-collapse: collapse; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+tbody tr { transition: background 0.12s ease; }
+tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
 
 .muted { color: var(--muted); }
 .tag {
@@ -293,3 +318,81 @@ th { color: var(--muted); font-weight: 500; font-size: 0.85rem; }
   .hero h1 { font-size: 2.3rem; }
   .hero-preview { order: -1; }
 }
+
+/* ---- Stat tiles (shared across Dashboard, Records, etc.) ---- */
+.stat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.stat-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.stat-value {
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-top: 10px;
+}
+.stat-sub { color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+
+.icon-badge {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.22);
+}
+
+/* Featured card — used for the headline handicap stat. */
+.card.featured {
+  background: linear-gradient(155deg, rgba(74, 222, 128, 0.12), var(--panel) 55%);
+  border-color: rgba(74, 222, 128, 0.28);
+}
+.card.featured .stat-value { font-size: 2.9rem; color: var(--text); }
+
+/* Cards that link somewhere lift slightly on hover. */
+.card.interactive { transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+.card.interactive:hover {
+  transform: translateY(-2px);
+  border-color: #3a4653;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Thin progress bar (achievements, completion, etc.). */
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  overflow: hidden;
+  margin-top: 12px;
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #38bdf8);
+}
+
+/* Score pill — colored score-vs-par chip. */
+.score-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.score-pill .score-num { font-size: 1.5rem; font-weight: 700; }

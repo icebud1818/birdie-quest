@@ -68,70 +68,95 @@ export default function Dashboard() {
     ? [...rounds].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
     : null
 
+  const achPct = ACHIEVEMENTS.length
+    ? Math.round((earnedIds.length / ACHIEVEMENTS.length) * 100)
+    : 0
+  const name = user?.email?.split('@')[0]
+
   return (
     <div className="container">
-      <h1>Welcome back, {user?.email?.split('@')[0]}</h1>
+      <h1>Welcome back{name ? `, ${name}` : ''}</h1>
+      <p className="subtitle">Here's where your game stands right now.</p>
 
       <div className="grid cols-3">
-        <div className="card">
-          <div className="muted">Handicap</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>
+        <div className="card featured">
+          <div className="stat-head">
+            <span className="stat-label">Handicap</span>
+            <span className="icon-badge"><PulseIcon /></span>
+          </div>
+          <div className="stat-value" style={{ color: 'var(--accent)' }}>
             {handicap == null ? '—' : handicap > 0 ? `+${handicap}` : handicap}
           </div>
-          <div className="muted" style={{ fontSize: '0.85rem' }}>
+          <div className="stat-sub">
             {handicap == null ? 'Need 3+ 18-hole rounds' : 'Best differentials, tee-adjusted'}
           </div>
         </div>
         <div className="card">
-          <div className="muted">Rounds logged</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>{totalRounds}</div>
+          <div className="stat-head">
+            <span className="stat-label">Rounds logged</span>
+            <span className="icon-badge"><FlagIcon /></span>
+          </div>
+          <div className="stat-value">{totalRounds}</div>
+          <div className="stat-sub">
+            {totalRounds ? 'Keep them coming' : 'Log your first round'}
+          </div>
         </div>
         <div className="card">
-          <div className="muted">Best 18-hole score</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>{bestScore ?? '—'}</div>
-          {bestRound && (
-            <div className="muted" style={{ fontSize: '0.85rem' }}>
-              at {bestRound.courseName}
-            </div>
-          )}
+          <div className="stat-head">
+            <span className="stat-label">Best 18-hole score</span>
+            <span className="icon-badge"><TrophyIcon /></span>
+          </div>
+          <div className="stat-value">{bestScore ?? '—'}</div>
+          <div className="stat-sub">
+            {bestRound ? `at ${bestRound.courseName}` : 'No 18-hole rounds yet'}
+          </div>
         </div>
       </div>
 
       <h2>Your stats</h2>
       <div className="grid cols-3">
         <div className="card">
-          <div className="muted">Putts / round</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>
+          <div className="stat-head">
+            <span className="stat-label">Putts / round</span>
+            <span className="icon-badge"><CircleIcon /></span>
+          </div>
+          <div className="stat-value">
             {stats.puttsPerRound == null ? '—' : stats.puttsPerRound.toFixed(1)}
           </div>
-          {stats.puttsPerHole != null && (
-            <div style={{ fontWeight: 600 }}>
-              {stats.puttsPerHole.toFixed(2)} <span className="muted" style={{ fontWeight: 400 }}>per hole</span>
-            </div>
-          )}
-          <div className="muted" style={{ fontSize: '0.85rem' }}>
+          <div className="stat-sub">
+            {stats.puttsPerHole != null && (
+              <span style={{ color: 'var(--text)', fontWeight: 600 }}>
+                {stats.puttsPerHole.toFixed(2)} per hole ·{' '}
+              </span>
+            )}
             {stats.puttRounds
-              ? `over ${stats.puttRounds} fully-tracked round${stats.puttRounds === 1 ? '' : 's'}`
-              : 'Log putts on a round to see this'}
+              ? `${stats.puttRounds} tracked round${stats.puttRounds === 1 ? '' : 's'}`
+              : 'Log putts to see this'}
           </div>
         </div>
         <div className="card">
-          <div className="muted">Greens in regulation</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>
+          <div className="stat-head">
+            <span className="stat-label">Greens in regulation</span>
+            <span className="icon-badge"><TargetIcon /></span>
+          </div>
+          <div className="stat-value">
             {stats.girPct == null ? '—' : `${Math.round(stats.girPct)}%`}
           </div>
-          <div className="muted" style={{ fontSize: '0.85rem' }}>
+          <div className="stat-sub">
             {stats.playedHoles
               ? `${stats.girHoles} of ${stats.playedHoles} holes`
               : 'No holes logged yet'}
           </div>
         </div>
         <div className="card">
-          <div className="muted">Out of bounds / round</div>
-          <div style={{ fontSize: '2rem', fontWeight: 700 }}>
+          <div className="stat-head">
+            <span className="stat-label">Out of bounds / round</span>
+            <span className="icon-badge"><WarnIcon /></span>
+          </div>
+          <div className="stat-value">
             {stats.obPerRound == null ? '—' : stats.obPerRound.toFixed(1)}
           </div>
-          <div className="muted" style={{ fontSize: '0.85rem' }}>
+          <div className="stat-sub">
             {stats.countableRounds
               ? `${stats.obShots} total over ${stats.countableRounds} round${stats.countableRounds === 1 ? '' : 's'}`
               : 'No rounds logged yet'}
@@ -143,24 +168,7 @@ export default function Dashboard() {
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Recent round</h2>
           {lastRound ? (
-            <div>
-              <div>
-                <strong>{lastRound.courseName}</strong>
-                {isIncomplete(lastRound) && (
-                  <span className="tag incomplete" style={{ marginLeft: 8 }}>Incomplete</span>
-                )}
-                {isScramble(lastRound) && (
-                  <span className="tag scramble" style={{ marginLeft: 8 }}>Scramble</span>
-                )}
-              </div>
-              <div className="muted">{lastRound.date}</div>
-              <div style={{ marginTop: 8 }}>
-                Score: <strong>{lastRound.totalScore}</strong> (par {lastRound.totalPar})
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <Link to={`/rounds/${lastRound.id}`}>View details →</Link>
-              </div>
-            </div>
+            <RecentRound round={lastRound} />
           ) : (
             <div className="muted">
               No rounds yet. <Link to="/add">Log your first round</Link>.
@@ -169,14 +177,97 @@ export default function Dashboard() {
         </div>
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Achievements</h2>
-          <div>
-            <strong>{earnedIds.length}</strong> of {ACHIEVEMENTS.length} earned
+          <div className="stat-value" style={{ fontSize: '1.7rem' }}>
+            {earnedIds.length}
+            <span className="muted" style={{ fontSize: '1rem', fontWeight: 400 }}>
+              {' '}/ {ACHIEVEMENTS.length} earned
+            </span>
           </div>
-          <div style={{ marginTop: 12 }}>
+          <div className="progress"><span style={{ width: `${achPct}%` }} /></div>
+          <div className="stat-sub">{achPct}% complete</div>
+          <div style={{ marginTop: 16 }}>
             <Link to="/achievements">See all →</Link>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function RecentRound({ round }) {
+  const diff = round.totalScore - round.totalPar
+  const diffColor = diff <= 0 ? 'var(--accent)' : diff <= 5 ? 'var(--text)' : 'var(--warn)'
+  return (
+    <div>
+      <div className="row" style={{ marginBottom: 4 }}>
+        <strong style={{ fontSize: '1.05rem' }}>{round.courseName}</strong>
+        {isIncomplete(round) && <span className="tag incomplete">Incomplete</span>}
+        {isScramble(round) && <span className="tag scramble">Scramble</span>}
+      </div>
+      <div className="muted" style={{ marginBottom: 14 }}>
+        {round.date}
+        {round.tee?.name ? ` · ${round.tee.name} tees` : ''}
+      </div>
+      <div className="score-pill">
+        <span className="score-num">{round.totalScore}</span>
+        <span className="muted">par {round.totalPar}</span>
+        <span style={{ color: diffColor, fontWeight: 700 }}>
+          {diff > 0 ? `+${diff}` : diff === 0 ? 'E' : diff}
+        </span>
+      </div>
+      <div style={{ marginTop: 16 }}>
+        <Link to={`/rounds/${round.id}`}>View details →</Link>
+      </div>
+    </div>
+  )
+}
+
+// Inline stroke icons (no dependencies) — match the landing page's icon set.
+function PulseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12h4l3 8 4-16 3 8h6" />
+    </svg>
+  )
+}
+function FlagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 22V4" />
+      <path d="M4 4h11l-1.5 3L15 10H4" />
+    </svg>
+  )
+}
+function TrophyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 4h12v4a6 6 0 0 1-12 0V4Z" />
+      <path d="M6 6H3v1a3 3 0 0 0 3 3M18 6h3v1a3 3 0 0 1-3 3" />
+      <path d="M9 20h6M12 14v6" />
+    </svg>
+  )
+}
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1" />
+    </svg>
+  )
+}
+function CircleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="8" />
+    </svg>
+  )
+}
+function WarnIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3 2 20h20L12 3Z" />
+      <path d="M12 10v4M12 17h.01" />
+    </svg>
   )
 }

@@ -36,8 +36,8 @@ export default function Records() {
           <div className="grid cols-3">
             {records.totals.map((t) => (
               <div className="card" key={t.id}>
-                <div className="muted">{t.label}</div>
-                <div style={{ fontSize: '2rem', fontWeight: 700 }}>{t.value}</div>
+                <div className="stat-label">{t.label}</div>
+                <div className="stat-value">{t.value}</div>
               </div>
             ))}
           </div>
@@ -51,15 +51,15 @@ function RecordCard({ record }) {
   const { label, display, round } = record
   return (
     <div className="card">
-      <div className="muted">{label}</div>
-      <div style={{ fontSize: '2rem', fontWeight: 700 }}>{display ?? '—'}</div>
+      <div className="stat-label">{label}</div>
+      <div className="stat-value">{display ?? '—'}</div>
       {round ? (
-        <div className="muted" style={{ fontSize: '0.85rem' }}>
+        <div className="stat-sub">
           {round.courseName}
           {round.date ? ` · ${round.date}` : ''}
         </div>
       ) : (
-        <div className="muted" style={{ fontSize: '0.85rem' }}>No qualifying round yet</div>
+        <div className="stat-sub">No qualifying round yet</div>
       )}
     </div>
   )
