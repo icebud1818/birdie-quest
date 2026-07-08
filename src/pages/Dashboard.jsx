@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx'
 import { useData } from '../data/DataContext.jsx'
 import { ACHIEVEMENTS } from '../data/achievements.js'
 import { calculateHandicap } from '../utils/handicap.js'
-import { isCountable, isIncomplete, tracksStats } from '../utils/rounds.js'
+import { isCountable, isIncomplete, isScramble, tracksStats } from '../utils/rounds.js'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -148,6 +148,9 @@ export default function Dashboard() {
                 <strong>{lastRound.courseName}</strong>
                 {isIncomplete(lastRound) && (
                   <span className="tag incomplete" style={{ marginLeft: 8 }}>Incomplete</span>
+                )}
+                {isScramble(lastRound) && (
+                  <span className="tag scramble" style={{ marginLeft: 8 }}>Scramble</span>
                 )}
               </div>
               <div className="muted">{lastRound.date}</div>

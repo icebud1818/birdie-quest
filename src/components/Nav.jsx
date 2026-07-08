@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 
 export default function Nav() {
@@ -6,10 +6,10 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <div className="brand">
+      <Link to="/" className="brand">
         score<span className="pulse">Pulse</span>
-      </div>
-      {user && (
+      </Link>
+      {user ? (
         <>
           <NavLink to="/" end>Dashboard</NavLink>
           <NavLink to="/rounds">Rounds</NavLink>
@@ -18,6 +18,11 @@ export default function Nav() {
           <NavLink to="/achievements">Achievements</NavLink>
           <span className="muted" style={{ marginLeft: 12 }}>{user.email}</span>
           <button onClick={() => logout()}>Log out</button>
+        </>
+      ) : (
+        <>
+          <NavLink to="/login">Log in</NavLink>
+          <Link to="/signup"><button className="primary">Sign up</button></Link>
         </>
       )}
     </nav>

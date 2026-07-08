@@ -40,6 +40,7 @@ export default function RoundForm({
   })
   const [notes, setNotes] = useState(initialRound?.notes || '')
   const [incomplete, setIncomplete] = useState(initialRound?.incomplete === true)
+  const [scramble, setScramble] = useState(initialRound?.scramble === true)
   const [trackStats, setTrackStats] = useState(() =>
     initialRound ? tracksStats(initialRound) : false
   )
@@ -132,6 +133,7 @@ export default function RoundForm({
       totalScore,
       totalPar,
       incomplete,
+      scramble,
       trackStats,
     }
     const trimmedNotes = notes.trim()
@@ -215,6 +217,32 @@ export default function RoundForm({
           {incomplete && (
             <div className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>
               Enter scores only for the holes you played. This round won't count
+              toward your handicap or achievements.
+            </div>
+          )}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 12,
+              marginBottom: 0,
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={scramble}
+              onChange={(e) => setScramble(e.target.checked)}
+              style={{ width: 'auto' }}
+            />
+            <span>
+              Scramble — played in a team scramble / best-ball format
+            </span>
+          </label>
+          {scramble && (
+            <div className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>
+              Scramble scores don't reflect solo play, so this round won't count
               toward your handicap or achievements.
             </div>
           )}

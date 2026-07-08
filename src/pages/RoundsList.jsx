@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../data/DataContext.jsx'
-import { holesPlayed, isIncomplete, isParThreeCourse } from '../utils/rounds.js'
+import { holesPlayed, isIncomplete, isParThreeCourse, isScramble } from '../utils/rounds.js'
 
 // Sort accessors keyed by column. Each returns a comparable value for a round.
 const SORT_ACCESSORS = {
@@ -100,6 +100,7 @@ export default function RoundsList() {
                       {r.courseName}
                       {isParThreeCourse(r) && <span className="tag" style={{ marginLeft: 8 }}>Par 3</span>}
                       {incomplete && <span className="tag incomplete" style={{ marginLeft: 8 }}>Incomplete</span>}
+                      {isScramble(r) && <span className="tag scramble" style={{ marginLeft: 8 }}>Scramble</span>}
                     </td>
                     <td>{incomplete ? `${holesPlayed(r)}/${total}` : total || '—'}</td>
                     <td><strong>{r.totalScore}</strong></td>

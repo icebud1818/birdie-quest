@@ -22,6 +22,11 @@ export function scoreColor(diff) {
 // rounds are still stored and shown, but they're excluded from the handicap,
 // achievements, and best-score-of-round stats. Individual holes they *did*
 // play still carry real scores.
+//
+// A round is a "scramble" when it was played in the scramble format (team
+// takes each shot from the best lie), so the score doesn't reflect one
+// golfer's play. Like incomplete rounds, scrambles are stored and shown but
+// excluded from the handicap and — for now — from achievements.
 
 export function holesPlayed(round) {
   if (!Array.isArray(round?.holes)) return 0
@@ -36,6 +41,12 @@ export function isIncomplete(round) {
   return round.holes.some((h) => typeof h.score !== 'number')
 }
 
+// True if the round was played in scramble format (flagged `scramble: true`
+// on the round). Scrambles are excluded from the handicap and achievements.
+export function isScramble(round) {
+  return round?.scramble === true
+}
+
 // True if the round was played on a par-3 / executive course (flagged
 // `par3: true` in courses.js). Only preset courses carry the flag; custom
 // rounds have no courseId, so they're never treated as par-3.
@@ -45,9 +56,9 @@ export function isParThreeCourse(round) {
 }
 
 // Rounds that count toward stats (handicap, achievements): fully played,
-// nothing missing, and not on a par-3 course.
+// nothing missing, not on a par-3 course, and not a scramble.
 export function isCountable(round) {
-  return !isIncomplete(round) && !isParThreeCourse(round)
+  return !isIncomplete(round) && !isParThreeCourse(round) && !isScramble(round)
 }
 
 // Whether a round's putts / GIR / OOB should feed the overall detailed stats.

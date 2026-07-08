@@ -8,11 +8,12 @@
 // This is not USGA-official, but it tracks improvement well enough for a
 // group of friends.
 
-import { isParThreeCourse } from './rounds.js'
+import { isParThreeCourse, isScramble } from './rounds.js'
 
 export function calculateHandicap(rounds) {
   const eligible = rounds
     .filter((r) => !r.incomplete)
+    .filter((r) => !isScramble(r))
     .filter((r) => !isParThreeCourse(r))
     .filter((r) => Array.isArray(r.holes) && r.holes.length === 18)
     .filter((r) => r.holes.every((h) => typeof h.score === 'number'))

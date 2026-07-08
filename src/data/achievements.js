@@ -58,9 +58,9 @@ export function evaluateAchievements(round, allRounds, alreadyEarnedIds) {
 // the source of truth after any add/edit/delete: an achievement that no
 // longer applies to any round simply won't be in the returned set.
 export function computeEarnedAchievements(allRounds) {
-  // Incomplete rounds don't count toward achievements — and they're excluded
-  // from the replay entirely, so they also don't advance order-dependent
-  // checks like "first round".
+  // Incomplete, par-3, and scramble rounds don't count toward achievements —
+  // and they're excluded from the replay entirely (via isCountable), so they
+  // also don't advance order-dependent checks like "first round".
   const sorted = allRounds.filter(isCountable).sort(byChronology)
   const earned = new Set()
   const prior = []

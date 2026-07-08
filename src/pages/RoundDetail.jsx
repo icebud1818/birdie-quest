@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useData } from '../data/DataContext.jsx'
-import { holesPlayed, isIncomplete, isParThreeCourse, scoreColor } from '../utils/rounds.js'
+import { holesPlayed, isIncomplete, isParThreeCourse, isScramble, scoreColor } from '../utils/rounds.js'
 
 export default function RoundDetail() {
   const { id } = useParams()
@@ -42,6 +42,7 @@ export default function RoundDetail() {
         {round.courseName}
         {isParThreeCourse(round) && <span className="tag" style={{ marginLeft: 10 }}>Par 3</span>}
         {incomplete && <span className="tag incomplete" style={{ marginLeft: 10 }}>Incomplete</span>}
+        {isScramble(round) && <span className="tag scramble" style={{ marginLeft: 10 }}>Scramble</span>}
       </h1>
       <div className="muted" style={{ marginBottom: 20 }}>
         {round.date}

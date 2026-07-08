@@ -4,6 +4,7 @@ import { DataProvider } from './data/DataContext.jsx'
 import Nav from './components/Nav.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
 import AchievementToast from './components/AchievementToast.jsx'
+import Home from './pages/Home.jsx'
 import Login from './pages/Login.jsx'
 import Signup from './pages/Signup.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -33,7 +34,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
         <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
-        <Route path="/" element={wrapProtected(<Dashboard />)} />
+        <Route path="/" element={user ? wrapProtected(<Dashboard />) : <Home />} />
         <Route path="/add" element={wrapProtected(<AddRound />)} />
         <Route path="/rounds" element={wrapProtected(<RoundsList />)} />
         <Route path="/rounds/:id" element={wrapProtected(<RoundDetail />)} />
