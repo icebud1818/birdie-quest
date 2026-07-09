@@ -89,9 +89,9 @@ export default function RoundsList() {
                   <Th column="date">Date</Th>
                   <Th column="course">Course</Th>
                   <Th column="holes" style={{ textAlign: 'center' }}>Holes</Th>
-                  <Th column="score" style={{ textAlign: 'center' }}>Score</Th>
+                  <Th column="score" style={{ textAlign: 'center' }}>Strokes</Th>
                   <Th column="par" style={{ textAlign: 'center' }}>Par</Th>
-                  <Th column="diff" style={{ textAlign: 'center' }}>Diff</Th>
+                  <Th column="diff" style={{ textAlign: 'center' }}>Score</Th>
                   <th></th>
                 </tr>
               </thead>

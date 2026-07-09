@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useData } from '../data/DataContext.jsx'
 import CourseCombobox from './CourseCombobox.jsx'
 import { fetchCourse } from '../utils/firestore.js'
@@ -152,6 +152,19 @@ export default function RoundForm({
     setHoles((prev) => prev.map((h, i) => (i === idx ? { ...h, [field]: value } : h)))
   }
 
+  // Enter in a hole input jumps to the same column on the next hole, instead of
+  // submitting the round. Refs are keyed `${field}-${holeIndex}`.
+  const cellRefs = useRef({})
+  const onCellEnter = (e, field, i) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const next = cellRefs.current[`${field}-${i + 1}`]
+    if (next) {
+      next.focus()
+      next.select?.()
+    }
+  }
+
   // Totals cover only the holes actually played, so an incomplete round's
   // score is measured against the par of the holes it includes.
   const { totalScore, totalPar, filledScoreCount } = useMemo(() => {
@@ -165,6 +178,8 @@ export default function RoundForm({
     }
     return { totalScore: s, totalPar: p, filledScoreCount: filled }
   }, [holes])
+
+  const scoreChip = diffChip(totalScore - totalPar)
 
   const submit = async (e) => {
     e.preventDefault()
@@ -271,7 +286,10 @@ export default function RoundForm({
 
   return (
     <div className="container">
-      <h1>{heading}</h1>
+      <h1 style={{ marginBottom: 8 }}>{heading}</h1>
+      <p className="subtitle" style={{ margin: '0 0 20px' }}>
+        Fill in your scorecard below — press Enter to jump to the next hole.
+      </p>
       <form onSubmit={submit}>
         <div className="card">
           <div className="grid cols-3">
@@ -508,14 +526,23 @@ export default function RoundForm({
         </div>
 
         <div className="card">
-          <h2 style={{ marginTop: 0 }}>Holes</h2>
+          <div className="row" style={{ marginBottom: 12 }}>
+            <h2 style={{ margin: 0 }}>Holes</h2>
+            <div className="spacer" />
+            {filledScoreCount > 0 && (
+              <span className="score-pill">
+                <span className="score-num">{totalScore}</span>
+                <span className={`diff-chip ${scoreChip.cls}`}>{scoreChip.label}</span>
+              </span>
+            )}
+          </div>
           <div style={{ overflowX: 'auto' }}>
             <table className="holes-table">
               <thead>
                 <tr>
                   <th>Hole</th>
                   <th>Par</th>
-                  <th>Score</th>
+                  <th>Strokes</th>
                   <th>Putts</th>
                   <th>OB</th>
                   <th>GIR</th>
@@ -543,7 +570,9 @@ export default function RoundForm({
                         type="number"
                         min="1"
                         value={h.score ?? ''}
+                        ref={(el) => { cellRefs.current[`score-${i}`] = el }}
                         onChange={(e) => updateHole(i, 'score', numOrNull(e.target.value))}
+                        onKeyDown={(e) => onCellEnter(e, 'score', i)}
                         required={!incomplete}
                       />
                     </td>
@@ -552,7 +581,9 @@ export default function RoundForm({
                         type="number"
                         min="0"
                         value={h.putts ?? ''}
+                        ref={(el) => { cellRefs.current[`putts-${i}`] = el }}
                         onChange={(e) => updateHole(i, 'putts', numOrNull(e.target.value))}
+                        onKeyDown={(e) => onCellEnter(e, 'putts', i)}
                       />
                     </td>
                     <td>
@@ -560,7 +591,9 @@ export default function RoundForm({
                         type="number"
                         min="0"
                         value={h.ob ?? ''}
+                        ref={(el) => { cellRefs.current[`ob-${i}`] = el }}
                         onChange={(e) => updateHole(i, 'ob', numOrNull(e.target.value))}
+                        onKeyDown={(e) => onCellEnter(e, 'ob', i)}
                       />
                     </td>
                     <td>
@@ -640,4 +673,11 @@ function numOrNull(v) {
   if (v === '' || v == null) return null
   const n = Number(v)
   return Number.isFinite(n) ? n : null
+}
+
+// Score-vs-par chip label + color class (matches the Rounds list).
+function diffChip(diff) {
+  const cls = diff <= 0 ? 'under' : diff <= 5 ? 'even' : 'over'
+  const label = diff > 0 ? `+${diff}` : diff === 0 ? 'E' : String(diff)
+  return { cls, label }
 }

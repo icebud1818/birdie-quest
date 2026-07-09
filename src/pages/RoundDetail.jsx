@@ -54,7 +54,7 @@ export default function RoundDetail() {
 
       <div className="grid cols-3">
         <div className="card">
-          <div className="muted">Score</div>
+          <div className="muted">Strokes</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{round.totalScore}</div>
         </div>
         <div className="card">
@@ -62,9 +62,9 @@ export default function RoundDetail() {
           <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{round.totalPar}</div>
         </div>
         <div className="card">
-          <div className="muted">vs Par</div>
+          <div className="muted">Score</div>
           <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>
-            {diff > 0 ? `+${diff}` : diff}
+            {diff > 0 ? `+${diff}` : diff === 0 ? 'E' : diff}
           </div>
         </div>
       </div>
@@ -82,8 +82,8 @@ export default function RoundDetail() {
             <tr>
               <th>Hole</th>
               <th>Par</th>
+              <th>Strokes</th>
               <th>Score</th>
-              <th>vs Par</th>
               <th>Putts</th>
               <th>OB</th>
               <th>GIR</th>
