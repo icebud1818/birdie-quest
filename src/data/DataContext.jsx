@@ -1,9 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthContext.jsx'
 import {
+  fetchCourses,
   fetchEarnedAchievements,
   fetchRounds,
   recordAchievement,
+  saveCourse,
   saveRound,
   updateRound as updateRoundFs,
   deleteRound as deleteRoundFs,
@@ -21,12 +23,24 @@ const AUTO_IDS = new Set(
   ACHIEVEMENTS.filter((a) => !MANUAL_ACHIEVEMENT_IDS.has(a.id)).map((a) => a.id)
 )
 
+// Ensure a round carries a boolean `par3` flag. New rounds snapshot it from the
+// form; older rounds predate the flag, so we derive it from the shared catalog
+// (a round with no courseId — i.e. a custom course — is never par-3).
+function withPar3(round, courseMap) {
+  if (typeof round.par3 === 'boolean') return round
+  const course = round.courseId ? courseMap.get(round.courseId) : null
+  return { ...round, par3: course?.par3 === true }
+}
+
 export function DataProvider({ children }) {
   const { user } = useAuth()
   const [rounds, setRounds] = useState([])
+  const [courses, setCourses] = useState([])
   const [earnedIds, setEarnedIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [lastEarned, setLastEarned] = useState([])
+
+  const getCourse = useCallback((id) => courses.find((c) => c.id === id) || null, [courses])
 
   // Recompute earned achievements from the full set of rounds and reconcile
   // Firestore + local state: award anything newly qualifying, revoke anything
@@ -58,26 +72,41 @@ export function DataProvider({ children }) {
   const reload = useCallback(async () => {
     if (!user) {
       setRounds([])
+      setCourses([])
       setEarnedIds([])
       setLoading(false)
       return
     }
     setLoading(true)
     try {
-      const [rs, achs] = await Promise.all([
+      const [rs, achs, cs] = await Promise.all([
         fetchRounds(user.uid),
         fetchEarnedAchievements(user.uid),
+        fetchCourses(),
       ])
-      setRounds(rs)
+      setCourses(cs)
+      const courseMap = new Map(cs.map((c) => [c.id, c]))
+      const enriched = rs.map((r) => withPar3(r, courseMap))
+      setRounds(enriched)
       // Self-heal on load: reconcile stored achievements against what the
       // rounds actually earn now. This revokes achievements that no longer
       // qualify (e.g. one earned on a course since flagged par-3) without
       // waiting for the next add/edit/delete.
-      await syncAchievements(rs, achs.map((a) => a.id))
+      await syncAchievements(enriched, achs.map((a) => a.id))
     } finally {
       setLoading(false)
     }
   }, [user, syncAchievements])
+
+  // Add (or update) a course in the shared catalog and reflect it locally.
+  const addCourse = useCallback(async (course) => {
+    await saveCourse(course)
+    setCourses((prev) => {
+      const rest = prev.filter((c) => c.id !== course.id)
+      return [...rest, course]
+    })
+    return course
+  }, [])
 
   useEffect(() => {
     reload()
@@ -146,6 +175,9 @@ export function DataProvider({ children }) {
     <DataContext.Provider
       value={{
         rounds,
+        courses,
+        getCourse,
+        addCourse,
         earnedIds,
         loading,
         addRound,

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { COURSES, getCourse } from '../data/courses.js'
+import { useData } from '../data/DataContext.jsx'
+import { fetchCourse } from '../utils/firestore.js'
+import { courseLookupEnabled, importCourse, searchCourses } from '../utils/courseApi.js'
 import { tracksStats } from '../utils/rounds.js'
 
 const CUSTOM = '__custom__'
-
-const SORTED_COURSES = [...COURSES].sort((a, b) => a.name.localeCompare(b.name))
+const SEARCH = '__search__'
 
 function todayIso() {
   const d = new Date()
@@ -24,7 +25,12 @@ export default function RoundForm({
   busyLabel = 'Saving…',
   heading = 'Log a round',
 }) {
-  const initialCourseId = resolveInitialCourseId(initialRound)
+  const { courses, getCourse, addCourse } = useData()
+  const SORTED_COURSES = useMemo(
+    () => [...courses].sort((a, b) => a.name.localeCompare(b.name)),
+    [courses]
+  )
+  const initialCourseId = resolveInitialCourseId(initialRound, courses, getCourse)
 
   const [date, setDate] = useState(initialRound?.date || todayIso())
   const [courseId, setCourseId] = useState(initialCourseId)
@@ -49,7 +55,7 @@ export default function RoundForm({
   )
   const [holes, setHoles] = useState(() => {
     if (initialRound?.holes) return initialRound.holes.map(toFormHole)
-    return makeHolesFor(initialCourseId, 18)
+    return makeHolesFor(initialCourseId, 18, getCourse)
   })
   const [notes, setNotes] = useState(initialRound?.notes || '')
   const [incomplete, setIncomplete] = useState(initialRound?.incomplete === true)
@@ -62,12 +68,21 @@ export default function RoundForm({
 
   const preset = courseId !== CUSTOM ? getCourse(courseId) : null
 
+  // Course-search / import state (only used when the lookup Worker is configured).
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [importing, setImporting] = useState(null) // externalId currently importing
+  const [lookupError, setLookupError] = useState('')
+
   const onCourseChange = (nextId) => {
     setCourseId(nextId)
     if (nextId === CUSTOM) {
       setHoles(blankHoles(customHoleCount, /*editablePar*/ true))
+    } else if (nextId === SEARCH) {
+      // Show the search panel; leave the current holes until a course is picked.
     } else {
-      setHoles(makeHolesFor(nextId, 18))
+      setHoles(makeHolesFor(nextId, 18, getCourse))
       setTeeId(getCourse(nextId)?.tees?.[0]?.id || '')
     }
   }
@@ -75,6 +90,54 @@ export default function RoundForm({
   const onCustomHoleCountChange = (n) => {
     setCustomHoleCount(n)
     if (courseId === CUSTOM) setHoles(blankHoles(n, true))
+  }
+
+  // Once a course is chosen from search, switch the form onto it (build holes
+  // and default the tee straight from the course object to avoid a state race).
+  const selectCourse = (course) => {
+    setCourseId(course.id)
+    setHoles(course.pars.map((par) => ({ par, score: null, putts: null, ob: null, gir: false })))
+    setTeeId(course.tees?.[0]?.id || '')
+    setResults([])
+    setQuery('')
+    setLookupError('')
+  }
+
+  const runSearch = async () => {
+    const q = query.trim()
+    if (!q) return
+    setSearching(true)
+    setLookupError('')
+    try {
+      setResults(await searchCourses(q))
+    } catch (err) {
+      setLookupError(err.message || 'Search failed.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  // Reuse a course we already have (0 API calls); otherwise import it from the
+  // API once and persist to the shared catalog so nobody fetches it again.
+  const pickResult = async (r) => {
+    setImporting(r.externalId)
+    setLookupError('')
+    try {
+      const id = `gca-${r.externalId}`
+      const local = getCourse(id)
+      if (local) {
+        selectCourse(local)
+        return
+      }
+      const remote = await fetchCourse(id)
+      const course = remote || (await importCourse(r.externalId))
+      await addCourse(course)
+      selectCourse(course)
+    } catch (err) {
+      setLookupError(err.message || 'Could not add that course.')
+    } finally {
+      setImporting(null)
+    }
   }
 
   const updateHole = (idx, field, value) => {
@@ -175,6 +238,9 @@ export default function RoundForm({
       date,
       courseId: courseId === CUSTOM ? null : courseId,
       courseName,
+      // Snapshot whether this was a par-3 course so stats/achievements never
+      // need the live catalog. Custom courses are never treated as par-3.
+      par3: courseId === CUSTOM ? false : preset?.par3 === true,
       holes: cleanedHoles,
       totalScore,
       totalPar,
@@ -208,6 +274,7 @@ export default function RoundForm({
             <div>
               <label>Course</label>
               <select value={courseId} onChange={(e) => onCourseChange(e.target.value)}>
+                {courseLookupEnabled && <option value={SEARCH}>+ Find a course…</option>}
                 <option value={CUSTOM}>+ Custom course…</option>
                 {SORTED_COURSES.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -292,6 +359,52 @@ export default function RoundForm({
               Course &amp; slope rating come from the scorecard for the tee you
               played. They let this round count toward your handicap — leave them
               blank only for a casual round you don't want scored.
+            </div>
+          )}
+          {courseId === SEARCH && (
+            <div style={{ marginTop: 16 }}>
+              <label>Search for a course</label>
+              <div className="row" style={{ gap: 8 }}>
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      runSearch()
+                    }
+                  }}
+                  placeholder="e.g. Pebble Beach"
+                />
+                <button type="button" onClick={runSearch} disabled={searching || !query.trim()}>
+                  {searching ? 'Searching…' : 'Search'}
+                </button>
+              </div>
+              {lookupError && <div className="error">{lookupError}</div>}
+              {results.length > 0 && (
+                <div className="grid" style={{ marginTop: 12 }}>
+                  {results.map((r) => (
+                    <button
+                      type="button"
+                      key={r.externalId}
+                      className="achievement"
+                      onClick={() => pickResult(r)}
+                      disabled={importing != null}
+                      style={{ textAlign: 'left', cursor: importing != null ? 'wait' : 'pointer' }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div className="title">{r.name}</div>
+                        {r.location && <div className="desc">{r.location}</div>}
+                      </div>
+                      <span className="muted">{importing === r.externalId ? 'Adding…' : 'Add'}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="muted" style={{ fontSize: '0.85rem', marginTop: 10 }}>
+                Can't find it? Choose “+ Custom course…” to enter the pars manually.
+              </div>
             </div>
           )}
           <label
@@ -473,8 +586,8 @@ export default function RoundForm({
   )
 }
 
-function resolveInitialCourseId(initialRound) {
-  if (!initialRound) return COURSES[0]?.id || CUSTOM
+function resolveInitialCourseId(initialRound, courses, getCourse) {
+  if (!initialRound) return courses[0]?.id || CUSTOM
   if (initialRound.courseId && getCourse(initialRound.courseId)) return initialRound.courseId
   return CUSTOM
 }
@@ -489,7 +602,7 @@ function toFormHole(h) {
   }
 }
 
-function makeHolesFor(courseId, defaultCount) {
+function makeHolesFor(courseId, defaultCount, getCourse) {
   const c = getCourse(courseId)
   if (c) return c.pars.map((par) => ({ par, score: null, putts: null, ob: null, gir: false }))
   return blankHoles(defaultCount, true)

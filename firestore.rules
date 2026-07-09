@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// scorePulse Firestore security rules.
+//
+//   users/{uid}/**   — private per-user data (rounds, achievements). Only the
+//                      owner can read or write.
+//   courses/{id}     — shared course catalog. Any signed-in user may read and
+//                      add/update courses; nobody may delete them from the app
+//                      (course data is shared, so deletes are admin-only via
+//                      the console).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Minimal shape check so a signed-in client can't write junk into the
+    // shared catalog: a course needs a name and a non-empty pars array.
+    function isValidCourse(data) {
+      return data.name is string
+        && data.name.size() > 0
+        && data.pars is list
+        && data.pars.size() > 0;
+    }
+
+    // Private per-user documents.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Shared, read-mostly course catalog.
+    match /courses/{courseId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && isValidCourse(request.resource.data);
+      allow delete: if false;
+    }
+  }
+}

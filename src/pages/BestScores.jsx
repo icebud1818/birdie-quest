@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useData } from '../data/DataContext.jsx'
-import { COURSES } from '../data/courses.js'
+import { seedPresetCourses } from '../utils/seedCourses.js'
 import { isIncomplete, isScramble, scoreColor } from '../utils/rounds.js'
 
 // The Best Scores page shows one course at a time (chosen from a dropdown):
@@ -13,12 +13,26 @@ import { isIncomplete, isScramble, scoreColor } from '../utils/rounds.js'
 //    real) but NOT for whole-round score tasks — an 80 through 14 holes isn't
 //    an 18-hole score, so it can't "break 90".
 export default function BestScores() {
-  const { rounds, loading } = useData()
+  const { rounds, courses: catalog, loading, reload } = useData()
 
-  const courses = useMemo(() => buildCourses(rounds), [rounds])
+  const courses = useMemo(() => buildCourses(rounds, catalog), [rounds, catalog])
   const [selectedKey, setSelectedKey] = useState('')
+  const [seeding, setSeeding] = useState(false)
+  const [seedError, setSeedError] = useState('')
 
   if (loading) return <div className="container center muted">Loading…</div>
+
+  const seedNow = async () => {
+    setSeeding(true)
+    setSeedError('')
+    try {
+      await seedPresetCourses()
+      await reload()
+    } catch (err) {
+      setSeedError(err.message || 'Failed to import preset courses.')
+      setSeeding(false)
+    }
+  }
 
   const selected = courses.find((c) => c.key === selectedKey) || courses[0]
 
@@ -43,6 +57,20 @@ export default function BestScores() {
           </select>
         </div>
       </div>
+
+      {catalog.length === 0 && (
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Import your courses</h3>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Your course catalog is empty. Add your preset courses to get started —
+            then log rounds against them (or search for new courses when adding a round).
+          </p>
+          <button className="primary" onClick={seedNow} disabled={seeding}>
+            {seeding ? 'Importing…' : 'Import preset courses'}
+          </button>
+          {seedError && <div className="error">{seedError}</div>}
+        </div>
+      )}
 
       {!selected ? (
         <div className="card center muted">No courses to show yet.</div>
@@ -126,8 +154,8 @@ export default function BestScores() {
 // Build the full list of selectable courses (preset + any custom names that
 // appear in rounds), each with its best-per-hole data and completion tasks,
 // sorted alphabetically by name.
-function buildCourses(rounds) {
-  const entries = COURSES.map((c) => ({
+function buildCourses(rounds, catalog) {
+  const entries = catalog.map((c) => ({
     key: c.id,
     name: c.name,
     par3: c.par3 === true,
@@ -136,8 +164,8 @@ function buildCourses(rounds) {
     belongs: (r) => r.courseId === c.id,
   }))
 
-  // Custom courses: grouped by name, skipping any that collide with a preset.
-  const presetNames = new Set(COURSES.map((c) => c.name))
+  // Custom courses: grouped by name, skipping any that collide with a catalog course.
+  const presetNames = new Set(catalog.map((c) => c.name))
   const customNames = [
     ...new Set(
       rounds

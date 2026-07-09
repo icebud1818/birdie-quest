@@ -1,5 +1,3 @@
-import { getCourse } from '../data/courses.js'
-
 // Color a hole's score by its strokes vs. par (diff = score - par):
 //   birdie or better  → brightest green
 //   par               → green
@@ -47,12 +45,12 @@ export function isScramble(round) {
   return round?.scramble === true
 }
 
-// True if the round was played on a par-3 / executive course (flagged
-// `par3: true` in courses.js). Only preset courses carry the flag; custom
-// rounds have no courseId, so they're never treated as par-3.
+// True if the round was played on a par-3 / executive course. The flag is
+// snapshotted onto the round when it's saved (`round.par3`), and back-filled
+// from the shared course catalog for older rounds when DataContext loads them
+// — so this stays a pure, catalog-free check.
 export function isParThreeCourse(round) {
-  if (!round?.courseId) return false
-  return getCourse(round.courseId)?.par3 === true
+  return round?.par3 === true
 }
 
 // Rounds that count toward stats (handicap, achievements): fully played,

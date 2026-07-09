@@ -1,0 +1,15 @@
+{
+  "name": "scorepulse-golf-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "login": "wrangler login",
+    "deploy": "wrangler deploy",
+    "secret": "wrangler secret put GOLF_API_KEY",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^3.60.0"
+  }
+}

@@ -1,0 +1,26 @@
+# Cloudflare Worker config for the scorePulse course-lookup proxy.
+#
+# Deploy:
+#   cd worker
+#   npm install -g wrangler        # if you don't have it
+#   wrangler login
+#   wrangler secret put GOLF_API_KEY   # paste your golfcourseapi.com key
+#   wrangler deploy
+#
+# After deploy, wrangler prints the Worker URL, e.g.
+#   https://scorepulse-golf-proxy.<your-subdomain>.workers.dev
+# Put that URL in the app's .env as VITE_COURSE_API_URL.
+
+name = "scorepulse-golf-proxy"
+main = "index.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+# Comma-separated list of app origins allowed to call this Worker.
+# Include your local dev origin and your deployed site.
+ALLOWED_ORIGIN = "http://localhost:5173,https://icebud1818.github.io"
+# Authorization prefix for the golfcourseapi key. Their docs use "Key";
+# switch to "Bearer" if your account shows a bearer token instead.
+AUTH_SCHEME = "Key"
+
+# GOLF_API_KEY is a secret, NOT set here — run `wrangler secret put GOLF_API_KEY`.
