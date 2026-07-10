@@ -176,8 +176,8 @@ function computeRecords(allRounds) {
   const birdieStreak = pick((r) => longestStreak(r, (s, p) => s <= p - 1) || null, higher)
 
   const roundRecords = [
-    rec('lowest-18', 'Lowest 18-hole score', lowest18, (v) => v, <TrophyIcon />, ''),
-    rec('best-vs-par', 'Best 18 vs par', bestVsPar, fmtVsPar, <TargetIcon />, ''),
+    rec('lowest-18', 'Lowest round', lowest18, (v) => v, <TrophyIcon />, ''),
+    rec('best-vs-par', 'Best score', bestVsPar, fmtVsPar, <TargetIcon />, ''),
     rec('best-nine', 'Lowest 9 (front or back)', bestNine, (v) => v, <FlagIcon />, 'blue'),
     rec('most-birdies', 'Most birdies in a round', mostBirdies, (v) => v, <StarIcon />, ''),
     rec('most-pars', 'Most pars in a round', mostPars, (v) => v, <CircleIcon />, ''),

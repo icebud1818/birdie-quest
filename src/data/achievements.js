@@ -66,7 +66,7 @@ export const ACHIEVEMENTS = [
   {
     id: 'first-birdie',
     name: 'Bird Is The Word',
-    description: 'Score one under par on any hole.',
+    description: 'Score a birdie — one under par on any hole.',
     check: (round) => round.holes.some((h) => h.score != null && h.score === h.par - 1),
   },
 
