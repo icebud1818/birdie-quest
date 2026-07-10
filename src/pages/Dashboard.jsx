@@ -72,7 +72,7 @@ export default function Dashboard() {
   const achPct = ACHIEVEMENTS.length
     ? Math.round((earnedIds.length / ACHIEVEMENTS.length) * 100)
     : 0
-  const name = user?.email?.split('@')[0]
+  const name = user?.displayName || user?.email?.split('@')[0]
 
   return (
     <div className="container">

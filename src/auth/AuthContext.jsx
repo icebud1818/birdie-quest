@@ -5,6 +5,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updateProfile,
 } from 'firebase/auth'
 import { auth, firebaseConfigured } from '../firebase.js'
 
@@ -13,6 +14,8 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(firebaseConfigured)
+  // Bumped after a profile update so consumers re-read the (mutated) user object.
+  const [, setProfileNonce] = useState(0)
 
   useEffect(() => {
     if (!firebaseConfigured) {
@@ -32,6 +35,11 @@ export function AuthProvider({ children }) {
     signup: (email, password) => createUserWithEmailAndPassword(auth, email, password),
     login: (email, password) => signInWithEmailAndPassword(auth, email, password),
     resetPassword: (email) => sendPasswordResetEmail(auth, email),
+    updateDisplayName: async (name) => {
+      if (!auth.currentUser) return
+      await updateProfile(auth.currentUser, { displayName: name.trim() || null })
+      setProfileNonce((n) => n + 1)
+    },
     logout: () => signOut(auth),
   }
 

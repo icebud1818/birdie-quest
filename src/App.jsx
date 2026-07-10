@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
+import { ThemeProvider } from './theme/ThemeContext.jsx'
 import { DataProvider } from './data/DataContext.jsx'
 import Nav from './components/Nav.jsx'
 import ProtectedRoute from './components/ProtectedRoute.jsx'
@@ -15,6 +16,7 @@ import RoundDetail from './pages/RoundDetail.jsx'
 import BestScores from './pages/BestScores.jsx'
 import Records from './pages/Records.jsx'
 import Achievements from './pages/Achievements.jsx'
+import Settings from './pages/Settings.jsx'
 
 // Only wrap logged-in routes with DataProvider so we don't hit Firestore
 // before the user is authenticated.
@@ -43,6 +45,7 @@ function AppRoutes() {
         <Route path="/best" element={wrapProtected(<BestScores />)} />
         <Route path="/records" element={wrapProtected(<Records />)} />
         <Route path="/achievements" element={wrapProtected(<Achievements />)} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
@@ -53,9 +56,11 @@ export default function App() {
   return (
     <div className="app">
       <HashRouter>
-        <AuthProvider>
-          <AppRoutes />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </ThemeProvider>
       </HashRouter>
     </div>
   )
