@@ -32,6 +32,7 @@ export default function Nav() {
           <NavLink to="/best" onClick={close}>Courses</NavLink>
           <NavLink to="/records" onClick={close}>Records</NavLink>
           <NavLink to="/achievements" onClick={close}>Achievements</NavLink>
+          <NavLink to="/friends" onClick={close}>Friends</NavLink>
           <NavLink to="/settings" onClick={close}>Settings</NavLink>
           <span className="nav-email muted">{user.displayName || user.email}</span>
           <button onClick={() => { close(); logout() }}>Log out</button>

@@ -6,6 +6,7 @@ import {
   fetchRounds,
   recordAchievement,
   saveCourse,
+  upsertProfile,
   saveRound,
   updateRound as updateRoundFs,
   deleteRound as deleteRoundFs,
@@ -78,6 +79,10 @@ export function DataProvider({ children }) {
       return
     }
     setLoading(true)
+    // Keep the public profile's name/email current so friends can look this
+    // user up by email. Fire-and-forget — a profile write must never block or
+    // fail the data load, and it never touches the isPublic sharing flag.
+    upsertProfile(user.uid, { displayName: user.displayName, email: user.email }).catch(() => {})
     try {
       const [rs, achs, cs] = await Promise.all([
         fetchRounds(user.uid),

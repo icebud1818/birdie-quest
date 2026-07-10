@@ -2,8 +2,15 @@ rules_version = '2';
 
 // scorePulse Firestore security rules.
 //
-//   users/{uid}/**   — private per-user data (rounds, achievements). Only the
-//                      owner can read or write.
+//   users/{uid}/**   — per-user data (rounds, achievements). The owner can
+//                      always read and write. Others may READ (never write) it
+//                      only when the owner has opted in by setting their
+//                      profile's isPublic flag to true.
+//   profiles/{uid}   — lightweight public profile (display name, email,
+//                      isPublic). Readable by any signed-in user so friends can
+//                      be looked up by email; writable only by the owner. Note
+//                      that stats themselves stay gated on isPublic below — a
+//                      profile exposes only a name/email, never round data.
 //   courses/{id}     — shared course catalog. Any signed-in user may read and
 //                      add/update courses; nobody may delete them from the app
 //                      (course data is shared, so deletes are admin-only via
@@ -20,9 +27,24 @@ service cloud.firestore {
         && data.pars.size() > 0;
     }
 
-    // Private per-user documents.
+    // True when the user {uid} has opted to make their stats public.
+    function statsArePublic(uid) {
+      return exists(/databases/$(database)/documents/profiles/$(uid))
+        && get(/databases/$(database)/documents/profiles/$(uid)).data.isPublic == true;
+    }
+
+    // Lightweight public profiles — used for friend lookup by email.
+    match /profiles/{uid} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Per-user documents: owner reads/writes; others may read only when the
+    // owner has made their stats public. Writes are always owner-only.
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null
+        && (request.auth.uid == uid || statsArePublic(uid));
+      allow write: if request.auth != null && request.auth.uid == uid;
     }
 
     // Shared, read-mostly course catalog.
