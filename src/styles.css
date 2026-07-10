@@ -121,6 +121,7 @@ label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 
   gap: 4px;
 }
 .nav-email { margin-left: 12px; }
+.nav-logout { margin-left: 12px; }
 
 /* Hamburger toggle — hidden on desktop, shown on mobile. */
 .nav-toggle {
@@ -145,6 +146,7 @@ label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 
   .nav-links.open { display: flex; }
   .nav-links a:not(.brand) { padding: 11px 12px; }
   .nav-links button { width: 100%; margin-top: 4px; }
+  .nav-logout { margin-left: 0; }
   .nav-email { margin: 4px 0 0; padding: 4px 12px; }
 }
 
