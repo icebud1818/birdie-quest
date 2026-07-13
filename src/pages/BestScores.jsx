@@ -91,7 +91,7 @@ export default function BestScores() {
           <h3 style={{ margin: '20px 0 10px', fontSize: '1rem' }}>Completion</h3>
           <div className="grid cols-2">
             {selected.tasks.map((t) => (
-              <div className={`achievement ${t.done ? '' : 'locked'}`} key={t.id}>
+              <div className={`achievement ${t.done ? 'earned' : 'locked'}`} key={t.id}>
                 <div
                   className="badge"
                   style={t.done

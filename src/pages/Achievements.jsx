@@ -53,7 +53,7 @@ export default function Achievements() {
                 if (isManual) {
                   return (
                     <label
-                      className={`achievement ${earned ? '' : 'locked'}`}
+                      className={`achievement ${earned ? 'earned' : 'locked'}`}
                       key={a.id}
                       style={{ cursor: 'pointer' }}
                     >
@@ -80,7 +80,7 @@ export default function Achievements() {
                   )
                 }
                 return (
-                  <div className={`achievement ${earned ? '' : 'locked'}`} key={a.id}>
+                  <div className={`achievement ${earned ? 'earned' : 'locked'}`} key={a.id}>
                     <div
                       className="badge"
                       style={earned ? {
