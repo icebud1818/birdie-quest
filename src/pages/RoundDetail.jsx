@@ -136,29 +136,31 @@ export default function RoundDetail() {
   )
 }
 
-// Score categories, best → worst. Triple bogey and anything worse fold into the
-// final bucket. Each bar is colored with the same scale as the per-hole table.
+// Score categories, worst → best (worse scores on the left, better on the
+// right). "+5 or worse" folds together everything at or beyond +5. Albatross
+// (or better) is optional — it only appears when one was actually made; every
+// other category always shows. Each bar is colored with the same scale as the
+// per-hole table.
 const SCORE_CATEGORIES = [
-  { key: 'albatross', label: 'Albatross+', match: (d) => d <= -3, color: scoreColor(-3) },
-  { key: 'eagle', label: 'Eagle', match: (d) => d === -2, color: scoreColor(-2) },
-  { key: 'birdie', label: 'Birdie', match: (d) => d === -1, color: scoreColor(-1) },
-  { key: 'par', label: 'Par', match: (d) => d === 0, color: scoreColor(0) },
-  { key: 'bogey', label: 'Bogey', match: (d) => d === 1, color: scoreColor(1) },
+  { key: 'worse', label: '+5 or worse', match: (d) => d >= 5, color: scoreColor(5) },
+  { key: 'quad', label: '+4', match: (d) => d === 4, color: scoreColor(4) },
+  { key: 'triple', label: 'Triple', match: (d) => d === 3, color: scoreColor(3) },
   { key: 'double', label: 'Double', match: (d) => d === 2, color: scoreColor(2) },
-  { key: 'triple', label: 'Triple+', match: (d) => d >= 3, color: scoreColor(3) },
+  { key: 'bogey', label: 'Bogey', match: (d) => d === 1, color: scoreColor(1) },
+  { key: 'par', label: 'Par', match: (d) => d === 0, color: scoreColor(0) },
+  { key: 'birdie', label: 'Birdie', match: (d) => d === -1, color: scoreColor(-1) },
+  { key: 'eagle', label: 'Eagle', match: (d) => d === -2, color: '#38bdf8' },
+  { key: 'albatross', label: 'Albatross+', match: (d) => d <= -3, color: '#a78bfa', optional: true },
 ]
 
-// Count each score category across played holes, then trim empty categories
-// from both ends so the chart spans only from the best score made to the worst
-// (interior gaps, e.g. a birdie and a bogey but no par, are kept).
+// Count each score category across played holes. Every category shows except
+// the optional albatross bucket, which only appears when one was made.
 function scoreBreakdown(round) {
   const diffs = (Array.isArray(round.holes) ? round.holes : [])
     .filter((h) => typeof h.score === 'number' && typeof h.par === 'number')
     .map((h) => h.score - h.par)
-  const counts = SCORE_CATEGORIES.map((c) => ({ ...c, count: diffs.filter(c.match).length }))
-  let start = 0
-  let end = counts.length - 1
-  while (start <= end && counts[start].count === 0) start++
-  while (end >= start && counts[end].count === 0) end--
-  return start > end ? [] : counts.slice(start, end + 1)
+  if (diffs.length === 0) return []
+  return SCORE_CATEGORIES
+    .map((c) => ({ ...c, count: diffs.filter(c.match).length }))
+    .filter((c) => !c.optional || c.count > 0)
 }
