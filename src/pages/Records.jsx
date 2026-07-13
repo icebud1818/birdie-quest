@@ -189,8 +189,8 @@ function computeRecords(allRounds) {
     rec('most-pars', 'Most pars in a round', mostPars, (v) => v, <CircleIcon />, ''),
     rec('fewest-putts', 'Fewest putts in a round', fewestPutts, (v) => v, <CircleIcon />, 'blue'),
     rec('most-gir', 'Most greens in regulation', mostGir, (v) => v, <TargetIcon />, 'blue'),
-    rec('par-streak', 'Longest par-or-better streak', parStreak, (v) => v, <FlameIcon />, 'amber'),
-    rec('birdie-streak', 'Longest birdie-or-better streak', birdieStreak, (v) => v, <FlameIcon />, 'amber'),
+    rec('par-streak', 'Longest par-or-better streak', parStreak, (v) => v, <FlameIcon />, 'orange'),
+    rec('birdie-streak', 'Longest birdie-or-better streak', birdieStreak, (v) => v, <FlameIcon />, 'orange'),
   ]
 
   // Rounds logged and holes played count EVERY round (scrambles included);

@@ -464,6 +464,7 @@ tbody tr:hover { background: var(--row-hover); }
 .icon-badge.amber { color: #fbbf24; background: rgba(251, 191, 36, 0.1); border-color: rgba(251, 191, 36, 0.22); }
 .icon-badge.purple { color: #a78bfa; background: rgba(167, 139, 250, 0.12); border-color: rgba(167, 139, 250, 0.25); }
 .icon-badge.pink { color: #fb7185; background: rgba(251, 113, 133, 0.12); border-color: rgba(251, 113, 133, 0.25); }
+.icon-badge.orange { color: #fb923c; background: rgba(251, 146, 60, 0.12); border-color: rgba(251, 146, 60, 0.25); }
 
 /* Stat tile with a colored left accent stripe (Records career totals). */
 .stat-tile { position: relative; overflow: hidden; }
