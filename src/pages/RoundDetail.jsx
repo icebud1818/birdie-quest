@@ -28,6 +28,8 @@ export default function RoundDetail() {
   const diff = round.totalScore - round.totalPar
   const incomplete = isIncomplete(round)
   const played = holesPlayed(round)
+  const breakdown = scoreBreakdown(round)
+  const maxCount = Math.max(1, ...breakdown.map((c) => c.count))
 
   return (
     <div className="container">
@@ -110,6 +112,53 @@ export default function RoundDetail() {
           </tbody>
         </table>
       </div>
+
+      {breakdown.length > 0 && (
+        <div className="card" style={{ marginTop: 16 }}>
+          <h3 style={{ marginTop: 0, fontSize: '1rem' }}>Score breakdown</h3>
+          <div className="score-breakdown">
+            {breakdown.map((c) => (
+              <div className="sb-col" key={c.key}>
+                <div className="sb-count">{c.count}</div>
+                <div className="sb-bar-track">
+                  <div
+                    className="sb-bar"
+                    style={{ height: `${(c.count / maxCount) * 100}%`, background: c.color }}
+                  />
+                </div>
+                <div className="sb-label">{c.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+// Score categories, best → worst. Triple bogey and anything worse fold into the
+// final bucket. Each bar is colored with the same scale as the per-hole table.
+const SCORE_CATEGORIES = [
+  { key: 'albatross', label: 'Albatross+', match: (d) => d <= -3, color: scoreColor(-3) },
+  { key: 'eagle', label: 'Eagle', match: (d) => d === -2, color: scoreColor(-2) },
+  { key: 'birdie', label: 'Birdie', match: (d) => d === -1, color: scoreColor(-1) },
+  { key: 'par', label: 'Par', match: (d) => d === 0, color: scoreColor(0) },
+  { key: 'bogey', label: 'Bogey', match: (d) => d === 1, color: scoreColor(1) },
+  { key: 'double', label: 'Double', match: (d) => d === 2, color: scoreColor(2) },
+  { key: 'triple', label: 'Triple+', match: (d) => d >= 3, color: scoreColor(3) },
+]
+
+// Count each score category across played holes, then trim empty categories
+// from both ends so the chart spans only from the best score made to the worst
+// (interior gaps, e.g. a birdie and a bogey but no par, are kept).
+function scoreBreakdown(round) {
+  const diffs = (Array.isArray(round.holes) ? round.holes : [])
+    .filter((h) => typeof h.score === 'number' && typeof h.par === 'number')
+    .map((h) => h.score - h.par)
+  const counts = SCORE_CATEGORIES.map((c) => ({ ...c, count: diffs.filter(c.match).length }))
+  let start = 0
+  let end = counts.length - 1
+  while (start <= end && counts[start].count === 0) start++
+  while (end >= start && counts[end].count === 0) end--
+  return start > end ? [] : counts.slice(start, end + 1)
 }
