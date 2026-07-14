@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useData } from '../data/DataContext.jsx'
 import CourseCombobox from './CourseCombobox.jsx'
 import { fetchCourse } from '../utils/firestore.js'
-import { courseLookupEnabled, importCourse, searchCourses } from '../utils/courseApi.js'
+import { courseLookupEnabled, importClubCourses, searchCourses } from '../utils/courseApi.js'
 import { tracksStats } from '../utils/rounds.js'
 
 const CUSTOM = '__custom__'
@@ -82,6 +82,7 @@ export default function RoundForm({
   const [searching, setSearching] = useState(false)
   const [importing, setImporting] = useState(null) // externalId currently importing
   const [lookupError, setLookupError] = useState('')
+  const [courseChoices, setCourseChoices] = useState(null) // courses to pick from, or null
 
   const onCourseChange = (nextId) => {
     setCourseId(nextId)
@@ -107,6 +108,7 @@ export default function RoundForm({
     setHoles(course.pars.map((par) => ({ par, score: null, putts: null, ob: null, gir: false })))
     setTeeId(course.tees?.[0]?.id || '')
     setResults([])
+    setCourseChoices(null)
     setQuery('')
     setLookupError('')
   }
@@ -125,22 +127,46 @@ export default function RoundForm({
     }
   }
 
-  // Reuse a course we already have (0 API calls); otherwise import it from the
-  // API once and persist to the shared catalog so nobody fetches it again.
+  // Turn a fully-formed course (from the lookup) into the selected course,
+  // reusing a shared-catalog copy when one already exists (0 extra writes).
+  const finalizeCourse = async (course) => {
+    const local = getCourse(course.id)
+    if (local) {
+      selectCourse(local)
+      return
+    }
+    const remote = await fetchCourse(course.id)
+    if (remote) {
+      selectCourse(remote)
+      return
+    }
+    await addCourse(course)
+    selectCourse(course)
+  }
+
+  // A search result is a club, which may map to several courses (e.g. a 27-hole
+  // facility's 9-hole pairings). Fetch them; auto-select when there's one,
+  // otherwise show a picker.
   const pickResult = async (r) => {
     setImporting(r.externalId)
     setLookupError('')
     try {
-      const id = `gca-${r.externalId}`
-      const local = getCourse(id)
-      if (local) {
-        selectCourse(local)
-        return
-      }
-      const remote = await fetchCourse(id)
-      const course = remote || (await importCourse(r.externalId))
-      await addCourse(course)
-      selectCourse(course)
+      const found = await importClubCourses(r.externalId)
+      if (found.length === 0) throw new Error('No course data is available for this facility yet.')
+      if (found.length === 1) await finalizeCourse(found[0])
+      else setCourseChoices(found)
+    } catch (err) {
+      setLookupError(err.message || 'Could not add that course.')
+    } finally {
+      setImporting(null)
+    }
+  }
+
+  const pickCourseChoice = async (course) => {
+    setImporting(course.id)
+    setLookupError('')
+    try {
+      await finalizeCourse(course)
     } catch (err) {
       setLookupError(err.message || 'Could not add that course.')
     } finally {
@@ -413,25 +439,60 @@ export default function RoundForm({
                 </button>
               </div>
               {lookupError && <div className="error">{lookupError}</div>}
-              {results.length > 0 && (
+              {courseChoices ? (
                 <div className="grid" style={{ marginTop: 12 }}>
-                  {results.map((r) => (
+                  <div className="row">
+                    <strong>Which course did you play?</strong>
+                    <div className="spacer" />
                     <button
                       type="button"
-                      key={r.externalId}
+                      onClick={() => setCourseChoices(null)}
+                      disabled={importing != null}
+                    >
+                      ← Back
+                    </button>
+                  </div>
+                  {courseChoices.map((c) => (
+                    <button
+                      type="button"
+                      key={c.id}
                       className="achievement"
-                      onClick={() => pickResult(r)}
+                      onClick={() => pickCourseChoice(c)}
                       disabled={importing != null}
                       style={{ textAlign: 'left', cursor: importing != null ? 'wait' : 'pointer' }}
                     >
                       <div style={{ flex: 1 }}>
-                        <div className="title">{r.name}</div>
-                        {r.location && <div className="desc">{r.location}</div>}
+                        <div className="title">{c.name}</div>
+                        <div className="desc">
+                          {c.tees.length} tee{c.tees.length === 1 ? '' : 's'} · par{' '}
+                          {c.pars.reduce((s, p) => s + p, 0)} · {c.pars.length} holes
+                        </div>
                       </div>
-                      <span className="muted">{importing === r.externalId ? 'Adding…' : 'Add'}</span>
+                      <span className="muted">{importing === c.id ? 'Adding…' : 'Select'}</span>
                     </button>
                   ))}
                 </div>
+              ) : (
+                results.length > 0 && (
+                  <div className="grid" style={{ marginTop: 12 }}>
+                    {results.map((r) => (
+                      <button
+                        type="button"
+                        key={r.externalId}
+                        className="achievement"
+                        onClick={() => pickResult(r)}
+                        disabled={importing != null}
+                        style={{ textAlign: 'left', cursor: importing != null ? 'wait' : 'pointer' }}
+                      >
+                        <div style={{ flex: 1 }}>
+                          <div className="title">{r.name}</div>
+                          {r.location && <div className="desc">{r.location}</div>}
+                        </div>
+                        <span className="muted">{importing === r.externalId ? 'Adding…' : 'Add'}</span>
+                      </button>
+                    ))}
+                  </div>
+                )
               )}
               <div className="muted" style={{ fontSize: '0.85rem', marginTop: 10 }}>
                 Can't find it? Choose “+ Custom course…” to enter the pars manually.

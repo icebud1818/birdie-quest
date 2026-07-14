@@ -20,9 +20,10 @@ export async function searchCourses(query) {
   return results || []
 }
 
-// Fetch one course by its external id, already transformed into the app's
-// course shape (id `gca-<externalId>`, pars, tees, par3, …).
-export async function importCourse(externalId) {
-  const { course } = await call(`/course?id=${encodeURIComponent(externalId)}`)
-  return course
+// Fetch every course for a club id, each already transformed into the app's
+// course shape (id `ogc-<courseId>`, pars, tees, par3, …). A club can map to
+// several courses (e.g. a 27-hole facility's 9-hole pairings).
+export async function importClubCourses(clubId) {
+  const { courses } = await call(`/course?id=${encodeURIComponent(clubId)}`)
+  return courses || []
 }

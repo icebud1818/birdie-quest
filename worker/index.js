@@ -9,7 +9,8 @@
 // Endpoints (unchanged contract — the client in src/utils/courseApi.js is
 // source-agnostic):
 //   GET /search?q=<text>   → [{ externalId, name, location }]   (externalId = club id)
-//   GET /course?id=<id>    → a course in scorePulse's own shape (ready to store)
+//   GET /course?id=<id>    → { courses: [ <scorePulse course>, ... ] } for a club
+//        (a club can map to several courses, e.g. a 27-hole facility's pairings)
 //
 // Vars (see worker/wrangler.toml):
 //   ALLOWED_ORIGIN (var)   comma-separated app origins allowed to call this
@@ -35,9 +36,11 @@ export default {
       if (url.pathname === '/course') {
         const id = (url.searchParams.get('id') || '').trim()
         if (!id) return json({ error: 'Missing id' }, 400, cors)
-        const course = await getCourse(id)
-        if (!course) return json({ error: 'Course not found' }, 404, cors)
-        return json({ course }, 200, cors)
+        const courses = await getCourses(id)
+        if (courses.length === 0) {
+          return json({ error: 'No course data is available for this facility yet.' }, 404, cors)
+        }
+        return json({ courses }, 200, cors)
       }
       return json({ error: 'Not found' }, 404, cors)
     } catch (err) {
@@ -95,39 +98,38 @@ async function search(query) {
   }))
 }
 
-// ---- Detail: club id → one scorePulse course ----
+// ---- Detail: club id → every usable scorePulse course for that club ----
 
-async function getCourse(clubId) {
+async function getCourses(clubId) {
   const data = await fetchJson(`/clubs/${encodeURIComponent(clubId)}`, 'Lookup')
   const club = data?.data
-  if (!club) return null
+  if (!club) return []
 
-  const course = pickPrimaryCourse(club.courses)
-  if (!course) throw new Error('No scorecard is available for this course yet.')
+  const usable = (Array.isArray(club.courses) ? club.courses : []).filter(
+    (c) => teesOf(c).length > 0
+  )
+  const multi = usable.length > 1
 
-  const tees = buildTees(course)
-  const pars = buildPars(course)
-  if (pars.length === 0) throw new Error('No hole data is available for this course yet.')
-  const par3 = pars.every((p) => p === 3)
-
-  return {
-    id: `ogc-${course.id}`,
-    name: courseName(club, course),
-    pars,
-    par3,
-    tees,
-    source: 'opengc',
-    externalId: course.id,
-    location: formatLocation(club),
+  const out = []
+  for (const course of usable) {
+    const tees = buildTees(course)
+    const pars = buildPars(course)
+    if (pars.length === 0 || tees.length === 0) continue
+    out.push({
+      id: `ogc-${course.id}`,
+      // With multiple courses, the course's own name carries the distinguishing
+      // detail (e.g. "…- Grizzly / Kodiak"); for a single course prefer the
+      // fuller club-based name.
+      name: multi ? course.name || courseName(club, course) : courseName(club, course),
+      pars,
+      par3: pars.every((p) => p === 3),
+      tees,
+      source: 'opengc',
+      externalId: course.id,
+      location: formatLocation(club),
+    })
   }
-}
-
-// A club can hold several courses; prefer the most complete one that actually
-// carries a usable scorecard.
-function pickPrimaryCourse(courses) {
-  const usable = (Array.isArray(courses) ? courses : []).filter((c) => teesOf(c).length > 0)
-  if (usable.length === 0) return null
-  return usable.sort((a, b) => (b.completenessScore || 0) - (a.completenessScore || 0))[0]
+  return out.sort((a, b) => a.name.localeCompare(b.name))
 }
 
 // The tees of a course's most recent scorecard version.
