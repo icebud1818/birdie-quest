@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
+import logo from '../assets/logo.png'
 
 export default function Nav() {
   const { user, logout } = useAuth()
@@ -10,7 +11,7 @@ export default function Nav() {
   return (
     <nav className="nav">
       <Link to="/" className="brand" onClick={close}>
-        Birdie<span className="pulse"> Quest</span>
+        <img src={logo} alt="Birdie Quest" className="brand-logo" />
       </Link>
 
       {user && (

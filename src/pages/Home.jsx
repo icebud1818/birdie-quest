@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { CircleIcon, FlagIcon, FlameIcon, PulseIcon, StarIcon, TrophyIcon } from '../components/Icons.jsx'
+import logo from '../assets/logo.png'
 
 // Public marketing / landing page shown at "/" to logged-out visitors.
 // Logged-in users get the Dashboard instead (see App.jsx routing).
@@ -80,7 +81,7 @@ export default function Home() {
       </section>
 
       <footer className="home-footer">
-        <span className="brand">Birdie<span className="pulse"> Quest</span></span>
+        <img src={logo} alt="Birdie Quest" className="brand-logo brand-logo-lg" />
         <span className="muted">Personal golf tracking · built for the range and the course.</span>
       </footer>
     </div>

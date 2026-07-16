@@ -100,9 +100,15 @@ label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 
   gap: 4px;
   flex-wrap: wrap;
 }
-.nav .brand { font-weight: 700; font-size: 1.15rem; margin-right: auto; color: var(--text); padding: 0; }
+.nav .brand { font-weight: 700; font-size: 1.15rem; margin-right: auto; color: var(--text); padding: 0; display: inline-flex; align-items: center; }
 .nav .brand:hover { text-decoration: none; }
 .nav .brand .pulse { color: var(--accent); }
+
+/* Wordmark logo (replaces the brand text in the nav and home footer). It's
+   designed on a dark background, so round its corners to read as a badge in
+   light mode; it blends into the header in dark mode. */
+.brand-logo { height: 26px; width: auto; display: block; border-radius: 6px; }
+.brand-logo-lg { height: 34px; }
 .nav a:not(.brand) {
   color: var(--muted);
   padding: 7px 12px;
