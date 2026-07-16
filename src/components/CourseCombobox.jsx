@@ -23,9 +23,11 @@ export default function CourseCombobox({ items, value, onChange, actions = [], p
     return it ? it.label : ''
   }, [value, items, actions])
 
+  // Show nothing until the user types — the played-courses list can grow large,
+  // so an empty query yields no course rows (pinned actions still show).
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return q ? items.filter((it) => it.label.toLowerCase().includes(q)) : items
+    return q ? items.filter((it) => it.label.toLowerCase().includes(q)) : []
   }, [items, query])
 
   const options = useMemo(() => {
@@ -98,6 +100,9 @@ export default function CourseCombobox({ items, value, onChange, actions = [], p
       />
       {open && (
         <div className="combobox-menu" role="listbox">
+          {query.trim() === '' && (
+            <div className="combobox-empty">Type to search your courses…</div>
+          )}
           {options.map((opt, i) => {
             const isAction = opt.kind === 'action'
             const firstAction = isAction && (i === 0 || options[i - 1].kind !== 'action')
@@ -120,10 +125,10 @@ export default function CourseCombobox({ items, value, onChange, actions = [], p
               </div>
             )
           })}
-          {matches.length === 0 && actions.length === 0 && (
+          {query.trim() !== '' && matches.length === 0 && actions.length === 0 && (
             <div className="combobox-empty">No matches.</div>
           )}
-          {matches.length === 0 && actions.length > 0 && (
+          {query.trim() !== '' && matches.length === 0 && actions.length > 0 && (
             <div className="combobox-empty">No matches in your courses — try “Find a course”.</div>
           )}
         </div>

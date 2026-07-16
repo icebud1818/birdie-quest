@@ -604,6 +604,13 @@ const ACHIEVEMENT_EMOJI = {
   'scratch-handicap': '0️⃣',
   'plus-handicap': '🌟',
 
+  // Scramble
+  'scramble-break-90': '🤝',
+  'scramble-break-80': '🔗',
+  'scramble-break-par': '🔮️',
+  'scramble-break-60': '🤖️',
+  'scramble-break-50': '👑',
+
   // Variety
   'play-par-3-course': '⛳',
   'two-rounds-day': '🔁',

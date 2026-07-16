@@ -111,7 +111,9 @@ export default function RoundDetail() {
                     {scored ? (d > 0 ? `+${d}` : d) : '—'}
                   </td>
                   <td>{h.putts ?? '—'}</td>
-                  <td>{h.ob ?? '—'}</td>
+                  <td style={typeof h.ob === 'number' && h.ob > 0 ? { color: 'var(--danger)', fontWeight: 600 } : undefined}>
+                    {h.ob ?? '—'}
+                  </td>
                   <td>{h.gir ? <span style={{ color: '#22c55e', fontWeight: 600 }}>✓</span> : '—'}</td>
                 </tr>
               )
