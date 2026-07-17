@@ -244,6 +244,20 @@ export default function RoundForm({
       setError('Enter a par for every hole you played.')
       return
     }
+    // Stroke index, if used at all, must be a complete set — each number 1..N
+    // exactly once — so per-hole handicap strokes are allocated correctly.
+    // (Leaving every hole's HCP blank is allowed for courses without one.)
+    const siVals = holes.map((h) => h.si).filter((v) => typeof v === 'number')
+    if (siVals.length > 0) {
+      const n = holes.length
+      const seen = new Set(siVals)
+      const complete =
+        siVals.length === n && seen.size === n && Array.from({ length: n }, (_, i) => i + 1).every((k) => seen.has(k))
+      if (!complete) {
+        setError(`Stroke index must list each number 1–${n} exactly once (or leave every hole's HCP blank).`)
+        return
+      }
+    }
 
     // Resolve the tee played. Preset courses snapshot the selected tee's
     // ratings; custom courses take them from the form so the handicap can use
