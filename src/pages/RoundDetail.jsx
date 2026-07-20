@@ -155,7 +155,7 @@ export default function RoundDetail() {
 // other category always shows. Each bar is colored with the same scale as the
 // per-hole table.
 const SCORE_CATEGORIES = [
-  { key: 'worse', label: '+5+', match: (d) => d >= 5, color: scoreColor(5) },
+  { key: 'worse', label: '≥+5', match: (d) => d >= 5, color: scoreColor(5) },
   { key: 'quad', label: '+4', match: (d) => d === 4, color: scoreColor(4) },
   { key: 'triple', label: 'Triple', match: (d) => d === 3, color: scoreColor(3) },
   { key: 'double', label: 'Double', match: (d) => d === 2, color: scoreColor(2) },
