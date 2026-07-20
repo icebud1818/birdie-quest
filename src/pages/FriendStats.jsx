@@ -15,6 +15,7 @@ import {
 import { calculateHandicap, formatHandicap } from '../utils/handicap.js'
 import { isCountable, tracksStats } from '../utils/rounds.js'
 import { PulseIcon, FlagIcon, TrophyIcon, TargetIcon, CircleIcon, WarnIcon } from '../components/Icons.jsx'
+import AchievementChains, { CHAINED_IDS } from '../components/AchievementChains.jsx'
 
 // Back-fill the par-3 flag from the shared course catalog, mirroring what
 // DataContext does for the signed-in user's own rounds.
@@ -140,6 +141,7 @@ export default function FriendStats() {
   // Achievements page). Rendered read-only — no manual toggles for a friend.
   const byCategory = new Map(ACHIEVEMENT_CATEGORIES.map((c) => [c.id, []]))
   for (const a of ACHIEVEMENTS) {
+    if (CHAINED_IDS.has(a.id)) continue
     const cat = categoryOf(a)
     if (byCategory.has(cat)) byCategory.get(cat).push(a)
   }
@@ -224,6 +226,8 @@ export default function FriendStats() {
         <div className="progress"><span style={{ width: `${achPct}%` }} /></div>
         <div className="stat-sub">{achPct}% complete</div>
       </div>
+
+      <AchievementChains earnedSet={earnedSet} />
 
       {ACHIEVEMENT_CATEGORIES.map((cat) => {
         const items = byCategory.get(cat.id)
