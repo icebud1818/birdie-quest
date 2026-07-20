@@ -255,17 +255,19 @@ tbody tr:hover { background: var(--row-hover); }
 .chain-body .desc { color: var(--muted); font-size: 0.9rem; }
 .chain-status { font-size: 0.78rem; font-weight: 700; margin-top: 4px; }
 
+/* Earned = green, in-progress = yellow, locked = grey. */
 .chain-node.done .chain-badge {
-  border-color: rgb(var(--chain-color));
-  background: rgba(var(--chain-color), 0.16);
+  border-color: var(--accent);
+  background: rgba(74, 222, 128, 0.16);
 }
-.chain-node.done .chain-marker::after { background: rgb(var(--chain-color)); opacity: 0.5; }
-.chain-node.done .chain-status { color: rgb(var(--chain-color)); }
+.chain-node.done .chain-marker::after { background: var(--accent); opacity: 0.5; }
+.chain-node.done .chain-status { color: var(--accent); }
 .chain-node.current .chain-badge {
-  border-color: rgb(var(--chain-color));
-  box-shadow: 0 0 0 4px rgba(var(--chain-color), 0.18);
+  border-color: #eab308;
+  background: rgba(234, 179, 8, 0.16);
+  box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.18);
 }
-.chain-node.current .chain-status { color: rgb(var(--chain-color)); }
+.chain-node.current .chain-status { color: #ca8a04; }
 .chain-node.locked { opacity: 0.6; }
 .chain-node.locked .chain-badge { filter: grayscale(1); }
 .chain-node.locked .chain-status { color: var(--muted); }

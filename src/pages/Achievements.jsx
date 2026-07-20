@@ -54,20 +54,20 @@ export default function Achievements() {
         {earnedCount} of {ACHIEVEMENTS.length} earned
       </div>
 
-      {CHAINS.map((chain) => {
-        const nodes = chain.ids.map((id) => byId.get(id)).filter(Boolean)
-        if (nodes.length === 0) return null
-        const color = ACHIEVEMENT_CATEGORIES.find((c) => c.id === chain.catId)?.color || '74,222,128'
-        return (
-          <AchievementChain
-            key={chain.key}
-            label={chain.label}
-            color={color}
-            nodes={nodes}
-            earnedSet={earnedSet}
-          />
-        )
-      })}
+      <div className="grid cols-2" style={{ marginBottom: 28, alignItems: 'start' }}>
+        {CHAINS.map((chain) => {
+          const nodes = chain.ids.map((id) => byId.get(id)).filter(Boolean)
+          if (nodes.length === 0) return null
+          return (
+            <AchievementChain
+              key={chain.key}
+              label={chain.label}
+              nodes={nodes}
+              earnedSet={earnedSet}
+            />
+          )
+        })}
+      </div>
 
       {ACHIEVEMENT_CATEGORIES.map((cat) => {
         const items = byCategory.get(cat.id)
@@ -153,18 +153,18 @@ export default function Achievements() {
 
 // A tiered achievement progression: earned tiers, the one you're working toward,
 // then locked tiers, connected as a vertical chain.
-function AchievementChain({ label, color, nodes, earnedSet }) {
+function AchievementChain({ label, nodes, earnedSet }) {
   const currentIdx = nodes.findIndex((a) => !earnedSet.has(a.id))
   const done = nodes.filter((a) => earnedSet.has(a.id)).length
 
   return (
-    <section style={{ marginBottom: 28 }}>
+    <section>
       <div className="row" style={{ alignItems: 'baseline' }}>
         <h2 style={{ margin: '0 0 10px' }}>{label}</h2>
         <div className="spacer" />
         <div className="muted">{done} / {nodes.length}</div>
       </div>
-      <div className="chain" style={{ '--chain-color': color }}>
+      <div className="chain">
         {nodes.map((a, i) => {
           const earned = earnedSet.has(a.id)
           const state = earned ? 'done' : i === currentIdx ? 'current' : 'locked'
