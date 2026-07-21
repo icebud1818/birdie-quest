@@ -4,7 +4,6 @@ import { useAuth } from '../auth/AuthContext.jsx'
 import { useData } from '../data/DataContext.jsx'
 import { ACHIEVEMENTS } from '../data/achievements.js'
 import { calculateHandicap, formatHandicap } from '../utils/handicap.js'
-import { PulseIcon, FlagIcon, TrophyIcon, TargetIcon, CircleIcon, WarnIcon } from '../components/Icons.jsx'
 import { isCountable, isIncomplete, isScramble, tracksStats } from '../utils/rounds.js'
 import ScoreTrendChart from '../components/ScoreTrendChart.jsx'
 
@@ -84,7 +83,7 @@ export default function Dashboard() {
         <div className="card featured">
           <div className="stat-head">
             <span className="stat-label">Handicap</span>
-            <span className="icon-badge"><PulseIcon /></span>
+            <span className="icon-badge emoji">🏌️</span>
           </div>
           <div className="stat-value" style={{ color: 'var(--accent)' }}>
             {formatHandicap(handicap)}
@@ -96,7 +95,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="stat-head">
             <span className="stat-label">Rounds logged</span>
-            <span className="icon-badge"><FlagIcon /></span>
+            <span className="icon-badge emoji">⛳</span>
           </div>
           <div className="stat-value">{totalRounds}</div>
           <div className="stat-sub">
@@ -106,7 +105,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="stat-head">
             <span className="stat-label">Best 18-hole score</span>
-            <span className="icon-badge"><TrophyIcon /></span>
+            <span className="icon-badge emoji">🏆</span>
           </div>
           <div className="stat-value">{bestScore ?? '—'}</div>
           <div className="stat-sub">
@@ -120,7 +119,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="stat-head">
             <span className="stat-label">Putts / round</span>
-            <span className="icon-badge"><CircleIcon /></span>
+            <span className="icon-badge emoji">🕳️</span>
           </div>
           <div className="stat-value">
             {stats.puttsPerRound == null ? '—' : stats.puttsPerRound.toFixed(1)}
@@ -139,7 +138,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="stat-head">
             <span className="stat-label">Greens in regulation</span>
-            <span className="icon-badge"><TargetIcon /></span>
+            <span className="icon-badge emoji">🟢</span>
           </div>
           <div className="stat-value">
             {stats.girPct == null ? '—' : `${Math.round(stats.girPct)}%`}
@@ -153,7 +152,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="stat-head">
             <span className="stat-label">Out of bounds / round</span>
-            <span className="icon-badge"><WarnIcon /></span>
+            <span className="icon-badge emoji">⚠️</span>
           </div>
           <div className="stat-value">
             {stats.obPerRound == null ? '—' : stats.obPerRound.toFixed(1)}

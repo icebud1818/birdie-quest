@@ -118,7 +118,7 @@ export default function BestScores() {
                 <div>
                   <div className="title">{t.label}</div>
                   <div className="desc">{t.detail}</div>
-                  <div className="status">{t.done ? '✓ Done' : 'Not yet'}</div>
+                  <div className="status">{t.done ? 'Done' : 'Not yet'}</div>
                 </div>
               </div>
             ))}
