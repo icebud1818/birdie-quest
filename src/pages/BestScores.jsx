@@ -89,8 +89,11 @@ export default function BestScores() {
           </div>
 
           <div className="grid cols-2" style={{ marginTop: 16 }}>
-            <div className="card stat-tile">
-              <div className="stat-label">Best score</div>
+            <div className="card stat-tile interactive">
+              <div className="stat-head">
+                <span className="stat-label">Best score</span>
+                <span className="icon-badge emoji">🏆</span>
+              </div>
               <div className="stat-value">{selected.bestScore ?? '—'}</div>
               <div className="stat-sub">
                 {selected.fullRoundCount
@@ -98,8 +101,11 @@ export default function BestScores() {
                   : 'No complete rounds yet'}
               </div>
             </div>
-            <div className="card stat-tile">
-              <div className="stat-label">Average score</div>
+            <div className="card stat-tile interactive">
+              <div className="stat-head">
+                <span className="stat-label">Average score</span>
+                <span className="icon-badge emoji">📊</span>
+              </div>
               <div className="stat-value">
                 {selected.avgScore != null ? selected.avgScore.toFixed(1) : '—'}
               </div>
@@ -107,21 +113,16 @@ export default function BestScores() {
             </div>
           </div>
 
-          <h3 style={{ margin: '20px 0 10px', fontSize: '1rem' }}>Completion</h3>
-          <div className="grid cols-2">
+          <h3 style={{ margin: '20px 0 8px', fontSize: '1rem' }}>Completion</h3>
+          <div className="progress"><span style={{ width: `${(selected.doneCount / selected.tasks.length) * 100}%` }} /></div>
+          <div className="grid cols-2 plain-grid">
             {selected.tasks.map((t) => (
-              <div className={`achievement ${t.done ? 'earned' : 'locked'}`} key={t.id}>
-                <div
-                  className="badge"
-                  style={t.done
-                    ? { background: 'var(--accent)', border: 'none', color: '#0a1509', fontWeight: 700 }
-                    : undefined}
-                >
-                  {t.done ? '✓' : '○'}
-                </div>
+              <div className={`achievement plain ${t.done ? 'earned' : 'locked'}`} key={t.id}>
+                <div className="badge">{t.done ? '✓' : '○'}</div>
                 <div>
                   <div className="title">{t.label}</div>
                   <div className="desc">{t.detail}</div>
+                  <div className="status">{t.done ? '✓ Done' : 'Not yet'}</div>
                 </div>
               </div>
             ))}
