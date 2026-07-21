@@ -36,7 +36,7 @@ export default function Records() {
           <h2>Career totals</h2>
           <div className="grid cols-3">
             {records.totals.map((t) => (
-              <div className="card stat-tile" key={t.id} style={{ '--tile-accent': t.accent }}>
+              <div className="card stat-tile interactive" key={t.id} style={{ '--tile-accent': t.accent }}>
                 <div className="stat-label">{t.label}</div>
                 <div className="stat-value" style={t.color ? { color: t.color } : undefined}>
                   {t.value}
@@ -59,7 +59,7 @@ export default function Records() {
 function RecordCard({ record }) {
   const { label, display, round, icon, badge } = record
   return (
-    <div className="card">
+    <div className="card interactive">
       <div className="stat-head">
         <span className="stat-label">{label}</span>
         <span className={`icon-badge ${badge || ''}`}>{icon}</span>
