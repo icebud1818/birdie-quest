@@ -378,7 +378,7 @@ tbody tr:hover { background: var(--row-hover); }
   border-radius: 0;
   padding: 0;
 }
-.plain-grid { gap: 20px 24px; }
+.plain-grid { gap: 20px 24px; margin-top: 16px; }
 /* Badge styled like a chain node: ringed green when earned, greyscale locked. */
 .achievement .badge {
   width: 42px; height: 42px; border-radius: 50%;
