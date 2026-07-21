@@ -361,25 +361,15 @@ tbody tr:hover { background: var(--row-hover); }
 .holes-table input[type="checkbox"] { width: auto; }
 
 .achievement {
-  position: relative;
-  overflow: hidden;
   display: flex;
   gap: 12px;
   align-items: flex-start;
   padding: 12px;
   background: var(--panel-2);
   border-radius: 6px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
 }
-.achievement.earned { border-color: rgba(74, 222, 128, 0.45); }
-/* Green accent stripe down the left edge of earned cards. */
-.achievement.earned::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 4px;
-  background: var(--accent);
-}
+.achievement.earned { border-color: rgba(74, 222, 128, 0.5); }
 .achievement.locked { opacity: 0.6; }
 /* Badge styled like a chain node: ringed green when earned, greyscale locked. */
 .achievement .badge {
