@@ -133,7 +133,7 @@ export default function RoundForm({
     setHoles(course.pars.map((par, i) => ({
       par,
       si: course.strokeIndexes?.[i] ?? null,
-      score: null, putts: null, ob: null, gir: false,
+      score: null, putts: 2, ob: 0, gir: false,
     })))
     setTeeFrom(course, course.tees?.[0]?.id)
     setResults([])
@@ -826,7 +826,7 @@ function makeHolesFor(courseId, defaultCount, getCourse) {
     return c.pars.map((par, i) => ({
       par,
       si: c.strokeIndexes?.[i] ?? null,
-      score: null, putts: null, ob: null, gir: false,
+      score: null, putts: 2, ob: 0, gir: false,
     }))
   }
   return blankHoles(defaultCount, true)
@@ -837,8 +837,8 @@ function blankHoles(count, editablePar) {
     par: editablePar ? null : 4,
     si: null,
     score: null,
-    putts: null,
-    ob: null,
+    putts: 2,
+    ob: 0,
     gir: false,
   }))
 }
