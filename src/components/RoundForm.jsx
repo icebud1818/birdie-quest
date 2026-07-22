@@ -50,6 +50,20 @@ export default function RoundForm({
   const [customSlope, setCustomSlope] = useState(
     initialCourseId === CUSTOM && initialTee?.slope != null ? String(initialTee.slope) : ''
   )
+  // Rating/slope for a preset-course tee — defaults to the selected tee's values
+  // but is editable so a wrong/re-rated course can be corrected on this round.
+  const [teeRating, setTeeRating] = useState(() => {
+    if (initialCourseId === CUSTOM) return ''
+    const c = getCourse(initialCourseId)
+    const r = initialTee?.rating ?? teeById(c, initialTee?.id || c?.tees?.[0]?.id)?.rating
+    return r != null ? String(r) : ''
+  })
+  const [teeSlope, setTeeSlope] = useState(() => {
+    if (initialCourseId === CUSTOM) return ''
+    const c = getCourse(initialCourseId)
+    const s = initialTee?.slope ?? teeById(c, initialTee?.id || c?.tees?.[0]?.id)?.slope
+    return s != null ? String(s) : ''
+  })
   const [holes, setHoles] = useState(() => {
     if (initialRound?.holes) return initialRound.holes.map(toFormHole)
     return makeHolesFor(initialCourseId, 18, getCourse)
@@ -87,6 +101,14 @@ export default function RoundForm({
   const [lookupError, setLookupError] = useState('')
   const [courseChoices, setCourseChoices] = useState(null) // courses to pick from, or null
 
+  // Select a tee and load its rating/slope into the editable fields.
+  const setTeeFrom = (course, id) => {
+    const t = (course?.tees || []).find((x) => x.id === id)
+    setTeeId(t?.id || id || '')
+    setTeeRating(t?.rating != null ? String(t.rating) : '')
+    setTeeSlope(t?.slope != null ? String(t.slope) : '')
+  }
+
   const onCourseChange = (nextId) => {
     setCourseId(nextId)
     if (nextId === CUSTOM) {
@@ -95,7 +117,7 @@ export default function RoundForm({
       // Show the search panel; leave the current holes until a course is picked.
     } else {
       setHoles(makeHolesFor(nextId, 18, getCourse))
-      setTeeId(getCourse(nextId)?.tees?.[0]?.id || '')
+      setTeeFrom(getCourse(nextId), getCourse(nextId)?.tees?.[0]?.id)
     }
   }
 
@@ -113,7 +135,7 @@ export default function RoundForm({
       si: course.strokeIndexes?.[i] ?? null,
       score: null, putts: null, ob: null, gir: false,
     })))
-    setTeeId(course.tees?.[0]?.id || '')
+    setTeeFrom(course, course.tees?.[0]?.id)
     setResults([])
     setCourseChoices(null)
     setQuery('')
@@ -288,7 +310,23 @@ export default function RoundForm({
       tee = { id: null, name: teeName, rating, slope }
     } else {
       const t = (preset?.tees || []).find((x) => x.id === teeId)
-      if (t) tee = { id: t.id, name: t.name, rating: t.rating, slope: t.slope }
+      if (t) {
+        const rating = numOrNull(teeRating)
+        const slope = numOrNull(teeSlope)
+        if (countsForHandicap && (rating == null || slope == null)) {
+          setError('Enter the course rating and slope for this tee so the round counts toward your handicap.')
+          return
+        }
+        if (rating != null && (rating < 50 || rating > 90)) {
+          setError('Course rating should be a number like 71.2.')
+          return
+        }
+        if (slope != null && (slope < 55 || slope > 155)) {
+          setError('Slope rating should be between 55 and 155.')
+          return
+        }
+        tee = { id: t.id, name: t.name, rating, slope }
+      }
     }
 
     // Keep every hole slot (so hole positions line up across rounds), but leave
@@ -367,7 +405,7 @@ export default function RoundForm({
             {courseId !== CUSTOM && preset?.tees?.length > 0 && (
               <div>
                 <label>Tee</label>
-                <select value={teeId} onChange={(e) => setTeeId(e.target.value)}>
+                <select value={teeId} onChange={(e) => setTeeFrom(preset, e.target.value)}>
                   {preset.tees.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.name}
@@ -376,6 +414,33 @@ export default function RoundForm({
                   ))}
                 </select>
               </div>
+            )}
+            {courseId !== CUSTOM && preset?.tees?.length > 0 && (
+              <>
+                <div>
+                  <label>Course rating</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="50"
+                    max="90"
+                    value={teeRating}
+                    onChange={(e) => setTeeRating(e.target.value)}
+                    placeholder="e.g. 71.2"
+                  />
+                </div>
+                <div>
+                  <label>Slope rating</label>
+                  <input
+                    type="number"
+                    min="55"
+                    max="155"
+                    value={teeSlope}
+                    onChange={(e) => setTeeSlope(e.target.value)}
+                    placeholder="e.g. 128"
+                  />
+                </div>
+              </>
             )}
             {courseId === CUSTOM && (
               <>
@@ -776,6 +841,10 @@ function blankHoles(count, editablePar) {
     ob: null,
     gir: false,
   }))
+}
+
+function teeById(course, id) {
+  return (course?.tees || []).find((t) => t.id === id) || null
 }
 
 function numOrNull(v) {
