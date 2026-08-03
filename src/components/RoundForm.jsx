@@ -82,6 +82,16 @@ export default function RoundForm({
 
   const preset = courseId !== CUSTOM ? getCourse(courseId) : null
 
+  // Preset courses show their pars/stroke indexes read-only until you opt into
+  // overriding them, so a wrong scorecard can be corrected on this round without
+  // stray edits happening by accident. In edit mode, start checked when the
+  // saved round already differs from the course.
+  const [parOverride, setParOverride] = useState(() =>
+    initialRound ? holesDifferFromCourse(initialRound.holes, getCourse(initialCourseId)) : false
+  )
+  const parsEditable = courseId === CUSTOM || parOverride
+  const siEditable = courseId === CUSTOM || parOverride
+
   // The dropdown lists only *your* courses — ones you've played plus your seeded
   // presets — so the shared catalog (potentially thousands of courses) doesn't
   // bloat it. Everything else is reachable via "Find a course". The currently
@@ -111,6 +121,7 @@ export default function RoundForm({
 
   const onCourseChange = (nextId) => {
     setCourseId(nextId)
+    setParOverride(false)
     if (nextId === CUSTOM) {
       setHoles(blankHoles(customHoleCount, /*editablePar*/ true))
     } else if (nextId === SEARCH) {
@@ -130,6 +141,7 @@ export default function RoundForm({
   // and default the tee straight from the course object to avoid a state race).
   const selectCourse = (course) => {
     setCourseId(course.id)
+    setParOverride(false)
     setHoles(course.pars.map((par, i) => ({
       par,
       si: course.strokeIndexes?.[i] ?? null,
@@ -207,17 +219,52 @@ export default function RoundForm({
     setHoles((prev) => prev.map((h, i) => (i === idx ? { ...h, [field]: value } : h)))
   }
 
+  // Turning the override off discards the edits and restores the course's own
+  // pars / stroke indexes, so unchecking is always a clean undo.
+  const onParOverrideChange = (checked) => {
+    setParOverride(checked)
+    if (!checked && preset) {
+      setHoles((prev) =>
+        prev.map((h, i) => ({
+          ...h,
+          par: preset.pars?.[i] ?? h.par,
+          si: preset.strokeIndexes?.[i] ?? null,
+        }))
+      )
+      setSiEdited(false)
+    }
+  }
+
   // Enter in a hole input jumps to the same column on the next hole, instead of
   // submitting the round. Refs are keyed `${field}-${holeIndex}`.
   const cellRefs = useRef({})
+  const focusField = (el) => {
+    if (!el) return
+    el.focus()
+    // select() throws on some input types (date, etc.) — only text/number.
+    if (el.type === 'text' || el.type === 'number') el.select?.()
+  }
   const onCellEnter = (e, field, i) => {
     if (e.key !== 'Enter') return
     e.preventDefault()
-    const next = cellRefs.current[`${field}-${i + 1}`]
-    if (next) {
-      next.focus()
-      next.select?.()
-    }
+    focusField(cellRefs.current[`${field}-${i + 1}`])
+  }
+
+  // Outside the hole table, Enter advances to the next field in the form rather
+  // than submitting it. Hole cells (which jump down their own column) and the
+  // course/search boxes handle Enter themselves and call preventDefault, so
+  // they're skipped here.
+  const formRef = useRef(null)
+  const onFormEnter = (e) => {
+    if (e.key !== 'Enter' || e.defaultPrevented) return
+    const el = e.target
+    if (el.tagName !== 'INPUT' || el.type === 'checkbox') return
+    if (el.getAttribute('role') === 'combobox') return
+    e.preventDefault()
+    const fields = Array.from(
+      formRef.current.querySelectorAll('input, select, textarea')
+    ).filter((f) => !f.disabled && f.type !== 'hidden' && f.type !== 'checkbox')
+    focusField(fields[fields.indexOf(el) + 1])
   }
 
   // Totals cover only the holes actually played, so an incomplete round's
@@ -258,9 +305,9 @@ export default function RoundForm({
       setError('Enter a score for every hole, or mark the round incomplete.')
       return
     }
-    // Custom courses need a par for every hole that was actually played.
+    // Wherever pars are hand-entered, every hole actually played needs one.
     if (
-      courseId === CUSTOM &&
+      parsEditable &&
       holes.some((h) => typeof h.score === 'number' && typeof h.par !== 'number')
     ) {
       setError('Enter a par for every hole you played.')
@@ -376,9 +423,9 @@ export default function RoundForm({
     <div className="container">
       <h1 style={{ marginBottom: 8 }}>{heading}</h1>
       <p className="subtitle" style={{ margin: '0 0 20px' }}>
-        Fill in your scorecard below — press Enter to jump to the next hole.
+        Fill in your scorecard below — press Enter to jump to the next box.
       </p>
-      <form onSubmit={submit}>
+      <form onSubmit={submit} onKeyDown={onFormEnter} ref={formRef}>
         <div className="card">
           <div className="grid cols-3">
             <div>
@@ -689,6 +736,33 @@ export default function RoundForm({
               </span>
             )}
           </div>
+          {preset && (
+            <>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginBottom: parOverride ? 6 : 12,
+                  cursor: 'pointer',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={parOverride}
+                  onChange={(e) => onParOverrideChange(e.target.checked)}
+                  style={{ width: 'auto' }}
+                />
+                <span>Override this course's pars &amp; stroke index (HCP)</span>
+              </label>
+              {parOverride && (
+                <div className="muted" style={{ fontSize: '0.85rem', marginBottom: 12 }}>
+                  Use this when the course's scorecard is wrong. Your values are
+                  saved with this round only — unchecking restores the course's.
+                </div>
+              )}
+            </>
+          )}
           <div style={{ overflowX: 'auto' }}>
             <table className="holes-table">
               <thead>
@@ -705,14 +779,16 @@ export default function RoundForm({
               <tbody>
                 {holes.map((h, i) => (
                   <tr key={i}>
-                    <td>{i + 1}</td>
+                    <td className="hole-num">{i + 1}</td>
                     <td>
-                      {courseId === CUSTOM ? (
+                      {parsEditable ? (
                         <input
                           type="number"
                           min="3" max="6"
                           value={h.par ?? ''}
+                          ref={(el) => { cellRefs.current[`par-${i}`] = el }}
                           onChange={(e) => updateHole(i, 'par', numOrNull(e.target.value))}
+                          onKeyDown={(e) => onCellEnter(e, 'par', i)}
                           required={!incomplete}
                         />
                       ) : (
@@ -720,16 +796,22 @@ export default function RoundForm({
                       )}
                     </td>
                     <td>
-                      <input
-                        type="number"
-                        min="1"
-                        max={holes.length}
-                        value={h.si ?? ''}
-                        onChange={(e) => {
-                          setSiEdited(true)
-                          updateHole(i, 'si', numOrNull(e.target.value))
-                        }}
-                      />
+                      {siEditable ? (
+                        <input
+                          type="number"
+                          min="1"
+                          max={holes.length}
+                          value={h.si ?? ''}
+                          ref={(el) => { cellRefs.current[`si-${i}`] = el }}
+                          onChange={(e) => {
+                            setSiEdited(true)
+                            updateHole(i, 'si', numOrNull(e.target.value))
+                          }}
+                          onKeyDown={(e) => onCellEnter(e, 'si', i)}
+                        />
+                      ) : (
+                        h.si ?? '—'
+                      )}
                     </td>
                     <td>
                       <input
@@ -807,6 +889,18 @@ function resolveInitialCourseId(initialRound, courses, getCourse) {
   // arbitrary entry from the shared catalog.
   const preset = courses.find((c) => c.source === 'preset')
   return preset?.id || courses[0]?.id || CUSTOM
+}
+
+// True when a saved round's pars / stroke indexes don't match the course it was
+// played on — i.e. they were overridden when the round was logged.
+function holesDifferFromCourse(roundHoles, course) {
+  if (!roundHoles || !course) return false
+  if (roundHoles.length !== course.pars?.length) return true
+  return roundHoles.some((h, i) => {
+    const par = typeof h.par === 'number' ? h.par : null
+    const si = typeof h.si === 'number' ? h.si : null
+    return par !== (course.pars[i] ?? null) || si !== (course.strokeIndexes?.[i] ?? null)
+  })
 }
 
 function toFormHole(h) {

@@ -364,6 +364,7 @@ tbody tr:hover { background: var(--row-hover); }
 .holes-table th, .holes-table td { padding: 6px 8px; text-align: center; }
 .holes-table input { width: 60px; padding: 4px 6px; text-align: center; }
 .holes-table input[type="checkbox"] { width: auto; }
+.holes-table td.hole-num { font-weight: 700; }
 
 .achievement {
   display: flex;
