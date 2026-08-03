@@ -289,17 +289,8 @@ async function usgaToken() {
   return { token: m ? m[1] : null, cookie }
 }
 
-// Search USGA for the facility (by cleaned name + state) → [{courseID, fullName, city}].
-async function usgaSearchFacility(club) {
-  if ((club.country || '').toLowerCase().indexOf('united states') === -1 && club.country) return []
-  const stateCode = usState(club.state)
-  if (!stateCode) return []
-  const name = cleanName(baseFacilityName(club.name))
-  if (!name) return []
-
-  const { token, cookie } = await usgaToken()
-  if (!token || !cookie) return []
-
+// One facility search POST. Returns [] on any failure.
+async function usgaQuery(name, stateCode, token, cookie) {
   const body = new URLSearchParams({
     clubName: name,
     clubCity: '',
@@ -319,6 +310,39 @@ async function usgaSearchFacility(club) {
   if (!res.ok) return []
   const list = await res.json().catch(() => [])
   return Array.isArray(list) ? list : []
+}
+
+// Search USGA for the facility (by cleaned name + state) → [{courseID, fullName, city}].
+async function usgaSearchFacility(club) {
+  if ((club.country || '').toLowerCase().indexOf('united states') === -1 && club.country) return []
+  const name = cleanName(baseFacilityName(club.name))
+  if (!name) return []
+
+  const { token, cookie } = await usgaToken()
+  if (!token || !cookie) return []
+
+  // Preferred: narrow the search to the state OpenGC reports.
+  const stateCode = usState(club.state)
+  if (stateCode) {
+    const list = await usgaQuery(name, stateCode, token, cookie)
+    if (list.length > 0) return list
+  }
+
+  // OpenGC's location data is sometimes wrong or unmappable — Odessa National is
+  // actually in Townsend DE but filed under Elkton MD — so the state-filtered
+  // search finds nothing. Retry nationwide, but only trust an unmistakable hit:
+  // USGA matches on substring and carries no location signal downstream, so a
+  // loose rule here would silently import another state's club as this course's
+  // ratings ("pine valley" returns 13 hits nationwide, including "Alpine Valley
+  // Resort"). One result, strongly name-matched, or we keep the OpenGC tees.
+  const wide = await usgaQuery(name, '', token, cookie)
+  if (
+    wide.length === 1 &&
+    jaccard(tokenSet(name), tokenSet(wide[0].fullName || wide[0].courseName || '')) >= 0.6
+  ) {
+    return wide
+  }
+  return []
 }
 
 async function usgaTeesFor(courseID) {

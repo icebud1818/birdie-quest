@@ -81,6 +81,7 @@ export default function RoundForm({
   const [siEdited, setSiEdited] = useState(false)
 
   const preset = courseId !== CUSTOM ? getCourse(courseId) : null
+  const selectedTee = teeById(preset, teeId)
 
   // Preset courses show their pars/stroke indexes read-only until you opt into
   // overriding them, so a wrong scorecard can be corrected on this round without
@@ -560,6 +561,17 @@ export default function RoundForm({
               blank only for a casual round you don't want scored.
             </div>
           )}
+          {/* USGA is the authoritative source for tee ratings; when it had no
+              match, the import falls back to OpenGC's own numbers and the tee
+              list is often incomplete. Say so, since a one-tee course otherwise
+              looks indistinguishable from a course that really has one tee. */}
+          {selectedTee?.ratingSource === 'opengc' && (
+            <div className="muted" style={{ fontSize: '0.85rem', marginTop: 10 }}>
+              Ratings for this tee come from OpenGC — USGA had no match for this
+              course, so the tee list may be incomplete and the rating/slope
+              unverified. Check them against your scorecard.
+            </div>
+          )}
           {courseId === SEARCH && (
             <div style={{ marginTop: 16 }}>
               <label>Search for a course</label>
@@ -587,24 +599,15 @@ export default function RoundForm({
                   )}
                 </button>
               </div>
-              {searching && (
+              {importing != null && (
                 <div
-                  className="row muted"
-                  style={{ gap: 8, fontSize: '0.85rem', marginTop: 8 }}
+                  className="muted"
+                  style={{ fontSize: '0.85rem', marginTop: 10 }}
                   role="status"
                   aria-live="polite"
                 >
-                  <span className="spinner" />
-                  <span>Searching for “{query.trim()}”…</span>
-                </div>
-              )}
-              {importing != null && (
-                <div style={{ marginTop: 12 }} role="status" aria-live="polite">
-                  <div className="progress-bar" />
-                  <div className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>
-                    Loading hole data from OpenGC and ratings from USGA — this can
-                    take a few seconds.
-                  </div>
+                  Loading hole data from OpenGC and ratings from USGA — this can
+                  take a few seconds.
                 </div>
               )}
               {lookupError && <div className="error">{lookupError}</div>}
@@ -656,6 +659,11 @@ export default function RoundForm({
                         <div className="desc">
                           {c.tees.length} tee{c.tees.length === 1 ? '' : 's'} ·{' '}
                           {parSummary(c.pars)}
+                          {c.source === 'opengc' && (
+                            <span className="tag par3" style={{ marginLeft: 8 }}>
+                              no USGA ratings
+                            </span>
+                          )}
                         </div>
                         <div className="desc par-seq">{parSequence(c.pars)}</div>
                       </div>
