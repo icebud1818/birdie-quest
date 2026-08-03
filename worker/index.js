@@ -9,7 +9,12 @@
 // OpenGC rating/slope is kept). USGA enrichment is best-effort — any failure
 // falls back to OpenGC so import always works.
 //
-// Endpoints (unchanged contract — src/utils/courseApi.js is source-agnostic):
+// OpenGC's data has duplicates: one physical course can appear twice with
+// conflicting hole data. Rather than guess, /course returns each distinct layout
+// (best-ranked first, `ambiguous: true` when two claim to be the same course) and
+// the user picks the one matching their scorecard.
+//
+// Endpoints (src/utils/courseApi.js is source-agnostic):
 //   GET /search?q=<text>   → [{ externalId, name, location }]   (externalId = club id)
 //   GET /course?id=<id>    → { courses: [ <scorePulse course>, ... ] } for a club
 //
@@ -116,40 +121,41 @@ async function getCourses(clubId) {
     usgaCourses = []
   }
 
-  // Match each OpenGC course to a USGA course, then dedup: OpenGC sometimes
-  // lists the same physical course twice. Courses resolving to the same USGA
-  // course (or, unmatched, the same par layout) collapse to one; genuinely
-  // different courses (e.g. a 27-hole facility's pairings) are kept.
+  // Match each OpenGC course to a USGA course, then dedup. Identity is the USGA
+  // course *and* the hole layout: OpenGC sometimes lists one physical course
+  // twice with different hole data (e.g. the nines swapped, or plain wrong pars),
+  // and those must stay separately selectable so the user can pick the layout
+  // matching their scorecard. Byte-identical layouts still collapse, as do
+  // genuinely different courses staying distinct (a 27-hole facility's pairings).
   const picked = []
   const seen = new Set()
   for (const course of usable) {
     const pars = buildPars(course)
     if (pars.length === 0) continue
     const usgaMatch = bestUsgaMatch(course.name || courseName(club, course), usgaCourses)
-    const key = usgaMatch ? `usga:${usgaMatch.courseID}` : `pars:${pars.join('-')}`
+    const group = usgaMatch ? `usga:${usgaMatch.courseID}` : `pars:${pars.join('-')}`
+    const key = `${group}|pars:${pars.join('-')}`
     if (seen.has(key)) continue
     seen.add(key)
-    picked.push({ course, pars, usgaMatch })
+    picked.push({ course, pars, si: buildStrokeIndexes(course), usgaMatch, group })
   }
 
-  const multi = picked.length > 1
+  // Resolve tees up front (cached per USGA course) so ranking can compare each
+  // candidate's par total against USGA's authoritative par for the course.
   const teeCache = new Map()
-  const out = []
-  for (const { course, pars, usgaMatch } of picked) {
-    const displayName = multi ? course.name || courseName(club, course) : courseName(club, course)
-
-    // Tees (names + rating/slope) come from USGA, the authoritative source.
-    // OpenGC only supplies the per-hole pars. OpenGC's own tees are used only as
-    // a fallback when USGA has no confident match for this course.
+  const entries = []
+  for (const p of picked) {
     let tees = []
     let teeSource = 'opengc'
-    if (usgaMatch) {
+    let usgaPar = null
+    if (p.usgaMatch) {
       try {
-        let usgaTees = teeCache.get(usgaMatch.courseID)
+        let usgaTees = teeCache.get(p.usgaMatch.courseID)
         if (!usgaTees) {
-          usgaTees = await usgaTeesFor(usgaMatch.courseID)
-          teeCache.set(usgaMatch.courseID, usgaTees)
+          usgaTees = await usgaTeesFor(p.usgaMatch.courseID)
+          teeCache.set(p.usgaMatch.courseID, usgaTees)
         }
+        usgaPar = usgaTees.find((t) => Number.isFinite(t.par))?.par ?? null
         const built = teesFromUsga(usgaTees)
         if (built.length) {
           tees = built
@@ -159,22 +165,64 @@ async function getCourses(clubId) {
         // fall through to the OpenGC fallback below
       }
     }
-    if (tees.length === 0) tees = buildTees(course) // OpenGC fallback
+    if (tees.length === 0) tees = buildTees(p.course) // OpenGC fallback
     if (tees.length === 0) continue
-
-    out.push({
-      id: `ogc-${course.id}`,
-      name: displayName,
-      pars,
-      strokeIndexes: buildStrokeIndexes(course),
-      par3: pars.every((p) => p === 3),
-      tees,
-      source: teeSource === 'usga' ? 'opengc+usga' : 'opengc',
-      externalId: course.id,
-      location: formatLocation(club),
-    })
+    entries.push({ ...p, tees, teeSource, rank: rankCandidate(p, club, usgaPar) })
   }
-  return out.sort((a, b) => a.name.localeCompare(b.name))
+
+  // Candidates sharing a USGA course are duplicates of one physical course with
+  // conflicting hole data — flag them so the UI can say so, and list the
+  // best-ranked first.
+  const groupCounts = new Map()
+  for (const e of entries) groupCounts.set(e.group, (groupCounts.get(e.group) || 0) + 1)
+
+  // Most-trustworthy first (the picker's default reading order), then by name.
+  entries.sort((a, b) => b.rank - a.rank || (a.course.name || '').localeCompare(b.course.name || ''))
+
+  const multi = entries.length > 1
+  return entries.map((e) => ({
+    id: `ogc-${e.course.id}`,
+    name: multi ? e.course.name || courseName(club, e.course) : courseName(club, e.course),
+    pars: e.pars,
+    strokeIndexes: e.si,
+    par3: e.pars.every((p) => p === 3),
+    tees: e.tees,
+    source: e.teeSource === 'usga' ? 'opengc+usga' : 'opengc',
+    externalId: e.course.id,
+    location: formatLocation(club),
+    // True when another candidate claims to be this same course with different
+    // hole data — the user has to pick which layout is right.
+    ambiguous: groupCounts.get(e.group) > 1,
+  }))
+}
+
+// Confidence that an OpenGC record is the maintained/correct one for a course,
+// used to order duplicates. Signals, most to least authoritative:
+//   • par total agrees with USGA's par for the course (authoritative when known)
+//   • the record's name matches the club / USGA facility name — the truncated
+//     duplicate ("Frog Hollow" vs "Frog Hollow Golf Club") is usually the stale one
+//   • OpenGC's own completeness score
+//   • a full, valid stroke index is present
+// Heuristic by nature: it only decides list order, and the user can always pick
+// the other one.
+function rankCandidate({ course, pars, si, usgaMatch }, club, usgaPar) {
+  const parTotal = pars.reduce((s, p) => s + p, 0)
+  const parAgrees = usgaPar != null && parTotal === usgaPar ? 1 : 0
+  const nameScore = Math.max(
+    fullNameScore(course.name, club.name),
+    fullNameScore(course.name, usgaMatch?.fullName)
+  )
+  const completeness = Math.min(course.completenessScore || 0, 100) / 100
+  const hasSi = si.length > 0 ? 1 : 0
+  return parAgrees * 1000 + nameScore * 100 + completeness * 10 + hasSi
+}
+
+// Name similarity that *keeps* golf stopwords, so "Frog Hollow Golf Club" scores
+// above the truncated "Frog Hollow" when compared with the club's own name.
+// (tokenSet() strips them, which makes those two names identical.)
+function fullNameScore(a, b) {
+  if (!a || !b) return 0
+  return jaccard(new Set(tokenList(a)), new Set(tokenList(b)))
 }
 
 function teesOf(course) {

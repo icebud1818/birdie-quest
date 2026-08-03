@@ -107,6 +107,7 @@ export default function RoundForm({
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
+  const [searchedFor, setSearchedFor] = useState('') // last query that completed
   const [importing, setImporting] = useState(null) // externalId currently importing
   const [lookupError, setLookupError] = useState('')
   const [courseChoices, setCourseChoices] = useState(null) // courses to pick from, or null
@@ -151,6 +152,7 @@ export default function RoundForm({
     setResults([])
     setCourseChoices(null)
     setQuery('')
+    setSearchedFor('')
     setLookupError('')
   }
 
@@ -159,10 +161,14 @@ export default function RoundForm({
     if (!q) return
     setSearching(true)
     setLookupError('')
+    setResults([])
+    setCourseChoices(null)
     try {
       setResults(await searchCourses(q))
+      setSearchedFor(q)
     } catch (err) {
       setLookupError(err.message || 'Search failed.')
+      setSearchedFor('')
     } finally {
       setSearching(false)
     }
@@ -571,10 +577,43 @@ export default function RoundForm({
                   placeholder="e.g. Pebble Beach"
                 />
                 <button type="button" onClick={runSearch} disabled={searching || !query.trim()}>
-                  {searching ? 'Searching…' : 'Search'}
+                  {searching ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <span className="spinner" />
+                      Searching…
+                    </span>
+                  ) : (
+                    'Search'
+                  )}
                 </button>
               </div>
+              {searching && (
+                <div
+                  className="row muted"
+                  style={{ gap: 8, fontSize: '0.85rem', marginTop: 8 }}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <span className="spinner" />
+                  <span>Searching for “{query.trim()}”…</span>
+                </div>
+              )}
+              {importing != null && (
+                <div style={{ marginTop: 12 }} role="status" aria-live="polite">
+                  <div className="progress-bar" />
+                  <div className="muted" style={{ fontSize: '0.85rem', marginTop: 6 }}>
+                    Loading hole data from OpenGC and ratings from USGA — this can
+                    take a few seconds.
+                  </div>
+                </div>
+              )}
               {lookupError && <div className="error">{lookupError}</div>}
+              {!searching && searchedFor && results.length === 0 && !courseChoices && !lookupError && (
+                <div className="muted" style={{ fontSize: '0.85rem', marginTop: 8 }}>
+                  No courses matched “{searchedFor}”. Try a shorter name, or use
+                  “+ Custom course…” to enter the pars yourself.
+                </div>
+              )}
               {courseChoices ? (
                 <div className="grid" style={{ marginTop: 12 }}>
                   <div className="row">
@@ -588,7 +627,15 @@ export default function RoundForm({
                       ← Back
                     </button>
                   </div>
-                  {courseChoices.map((c) => (
+                  {courseChoices.some((c) => c.ambiguous) && (
+                    <div className="muted" style={{ fontSize: '0.85rem' }}>
+                      Some of these are the same course listed twice upstream with
+                      conflicting hole data. Compare the pars below against your
+                      scorecard and pick the one that matches — you can also correct
+                      pars per-round with the override on the scorecard.
+                    </div>
+                  )}
+                  {courseChoices.map((c, ci) => (
                     <button
                       type="button"
                       key={c.id}
@@ -598,13 +645,30 @@ export default function RoundForm({
                       style={{ textAlign: 'left', cursor: importing != null ? 'wait' : 'pointer' }}
                     >
                       <div style={{ flex: 1 }}>
-                        <div className="title">{c.name}</div>
-                        <div className="desc">
-                          {c.tees.length} tee{c.tees.length === 1 ? '' : 's'} · par{' '}
-                          {c.pars.reduce((s, p) => s + p, 0)} · {c.pars.length} holes
+                        <div className="title">
+                          {c.name}
+                          {c.ambiguous && ci === 0 && (
+                            <span className="tag complete" style={{ marginLeft: 8 }}>
+                              Best match
+                            </span>
+                          )}
                         </div>
+                        <div className="desc">
+                          {c.tees.length} tee{c.tees.length === 1 ? '' : 's'} ·{' '}
+                          {parSummary(c.pars)}
+                        </div>
+                        <div className="desc par-seq">{parSequence(c.pars)}</div>
                       </div>
-                      <span className="muted">{importing === c.id ? 'Adding…' : 'Select'}</span>
+                      <span className="muted">
+                        {importing === c.id ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <span className="spinner" />
+                            Adding…
+                          </span>
+                        ) : (
+                          'Select'
+                        )}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -624,7 +688,16 @@ export default function RoundForm({
                           <div className="title">{r.name}</div>
                           {r.location && <div className="desc">{r.location}</div>}
                         </div>
-                        <span className="muted">{importing === r.externalId ? 'Adding…' : 'Add'}</span>
+                        <span className="muted">
+                          {importing === r.externalId ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <span className="spinner" />
+                              Adding…
+                            </span>
+                          ) : (
+                            'Add'
+                          )}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -889,6 +962,22 @@ function resolveInitialCourseId(initialRound, courses, getCourse) {
   // arbitrary entry from the shared catalog.
   const preset = courses.find((c) => c.source === 'preset')
   return preset?.id || courses[0]?.id || CUSTOM
+}
+
+// "7 tees · par 71 (out 35 · in 36) · 18 holes" — the out/in split is what
+// distinguishes two upstream copies of a course whose nines are swapped, since
+// their totals are identical.
+function parSummary(pars) {
+  const total = pars.reduce((s, p) => s + p, 0)
+  if (pars.length !== 18) return `par ${total} · ${pars.length} holes`
+  const out9 = pars.slice(0, 9).reduce((s, p) => s + p, 0)
+  return `par ${total} (out ${out9} · in ${total - out9}) · 18 holes`
+}
+
+// Hole-by-hole pars, nines separated, for comparing against a scorecard.
+function parSequence(pars) {
+  if (pars.length !== 18) return pars.join(' ')
+  return `${pars.slice(0, 9).join(' ')}  |  ${pars.slice(9).join(' ')}`
 }
 
 // True when a saved round's pars / stroke indexes don't match the course it was
