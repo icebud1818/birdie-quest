@@ -1,8 +1,13 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useData } from '../data/DataContext.jsx'
 import CourseCombobox from './CourseCombobox.jsx'
 import { fetchCourse } from '../utils/firestore.js'
-import { courseLookupEnabled, importClubCourses, searchCourses } from '../utils/courseApi.js'
+import {
+  courseLookupEnabled,
+  importClubCourses,
+  searchCourses,
+  warmCourseApi,
+} from '../utils/courseApi.js'
 import { tracksStats } from '../utils/rounds.js'
 
 const CUSTOM = '__custom__'
@@ -109,6 +114,13 @@ export default function RoundForm({
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [searchedFor, setSearchedFor] = useState('') // last query that completed
+  const [slowSearch, setSlowSearch] = useState(false) // search is outliving the warm-up
+
+  // Start the lookup upstream waking as soon as the form opens, so the boot
+  // overlaps with filling in the date and course instead of blocking the search.
+  useEffect(() => {
+    if (courseLookupEnabled) warmCourseApi()
+  }, [])
   const [importing, setImporting] = useState(null) // externalId currently importing
   const [lookupError, setLookupError] = useState('')
   const [courseChoices, setCourseChoices] = useState(null) // courses to pick from, or null
@@ -164,6 +176,9 @@ export default function RoundForm({
     setLookupError('')
     setResults([])
     setCourseChoices(null)
+    // Only explain the wait once it's actually long — a warm search returns well
+    // inside this, so the note never flashes up on the common path.
+    const slowTimer = setTimeout(() => setSlowSearch(true), 4000)
     try {
       setResults(await searchCourses(q))
       setSearchedFor(q)
@@ -171,6 +186,8 @@ export default function RoundForm({
       setLookupError(err.message || 'Search failed.')
       setSearchedFor('')
     } finally {
+      clearTimeout(slowTimer)
+      setSlowSearch(false)
       setSearching(false)
     }
   }
@@ -599,6 +616,17 @@ export default function RoundForm({
                   )}
                 </button>
               </div>
+              {slowSearch && (
+                <div
+                  className="muted"
+                  style={{ fontSize: '0.85rem', marginTop: 10 }}
+                  role="status"
+                  aria-live="polite"
+                >
+                  The course database is waking up — the first search after a while
+                  can take up to 20 seconds. Later searches are quick.
+                </div>
+              )}
               {importing != null && (
                 <div
                   className="muted"

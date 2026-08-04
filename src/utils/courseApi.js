@@ -14,6 +14,15 @@ async function call(path) {
   return data
 }
 
+// Nudge the Worker so its upstream is booting while the user is still filling in
+// the form. OpenGC runs on Fly with scale-to-zero and takes ~20s to wake, so the
+// first search of a visit is slow unless that wait starts early. Fire-and-forget:
+// the response is irrelevant, and a failure just means the search pays the boot.
+export function warmCourseApi() {
+  if (!BASE) return
+  fetch(`${BASE}/warm`).catch(() => {})
+}
+
 // Search courses by name. Returns [{ externalId, name, location }].
 export async function searchCourses(query) {
   const { results } = await call(`/search?q=${encodeURIComponent(query)}`)

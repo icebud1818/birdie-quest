@@ -17,6 +17,12 @@
 // Endpoints (src/utils/courseApi.js is source-agnostic):
 //   GET /search?q=<text>   → [{ externalId, name, location }]   (externalId = club id)
 //   GET /course?id=<id>    → { courses: [ <scorePulse course>, ... ] } for a club
+//   GET /warm              → 204; wakes the upstream, see below
+//
+// OpenGC runs on Fly with scale-to-zero, so the first request after an idle
+// period waits ~15s for their machine to boot. Two mitigations: successful
+// responses are cached (course data changes annually at most), and /warm lets the
+// app nudge the upstream awake while the user is still typing.
 //
 // Vars (see worker/wrangler.toml):
 //   ALLOWED_ORIGIN (var)   comma-separated app origins allowed to call this
@@ -27,8 +33,14 @@ const USGA_BASE = 'https://ncrdb.usga.org'
 // tool UAs, so we present a curl-style one.
 const UA = 'curl/8.5.0'
 
+// Bump when the response shape or matching logic changes, so a deploy doesn't
+// keep serving entries built by the old code.
+const CACHE_VERSION = 'v2'
+const COURSE_TTL = 7 * 24 * 60 * 60 // course data is near-static
+const SEARCH_TTL = 24 * 60 * 60
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get('Origin') || ''
     const cors = corsHeaders(origin, env)
 
@@ -37,28 +49,91 @@ export default {
 
     const url = new URL(request.url)
     try {
+      // Fire-and-forget wake-up for the upstream. Returns straight away — the
+      // caller only wants the side effect, not the data.
+      if (url.pathname === '/warm') {
+        background(ctx, fetch(`${OPENGC_BASE}/clubs?page=1&limit=1&search=a`, {
+          headers: { Accept: 'application/json' },
+        }).catch(() => {}))
+        return new Response(null, { status: 204, headers: cors })
+      }
       if (url.pathname === '/search') {
         const q = (url.searchParams.get('q') || '').trim()
         if (!q) return json({ error: 'Missing query' }, 400, cors)
-        return json({ results: await search(q) }, 200, cors)
+        // Awaited, not returned bare: a returned promise escapes this try/catch.
+        return await cached(ctx, cors, `search:${q.toLowerCase()}`, SEARCH_TTL, async () => ({
+          results: await search(q),
+        }))
       }
       if (url.pathname === '/course') {
         const id = (url.searchParams.get('id') || '').trim()
         if (!id) return json({ error: 'Missing id' }, 400, cors)
-        const courses = await getCourses(id)
-        if (courses.length === 0) {
-          return json({ error: 'No course data is available for this facility yet.' }, 404, cors)
-        }
-        return json({ courses }, 200, cors)
+        return await cached(ctx, cors, `course:${id}`, COURSE_TTL, async () => {
+          const courses = await getCourses(id)
+          if (courses.length === 0) {
+            throw notFound('No course data is available for this facility yet.')
+          }
+          return { courses }
+        })
       }
       return json({ error: 'Not found' }, 404, cors)
     } catch (err) {
+      // Only our own "nothing here" signal is a 404; an upstream 404 is still a
+      // failed dependency and stays a 502.
+      if (err.notFound) return json({ error: err.message }, 404, cors)
       if (err.status === 429) {
         return json({ error: 'Course lookup is busy right now — try again in a moment.' }, 429, cors)
       }
       return json({ error: err.message || 'Upstream error' }, 502, cors)
     }
   },
+}
+
+// Run a promise past the response. ctx is absent when the module is imported
+// outside the Workers runtime (e.g. a local test harness), so fall back to
+// letting it run unobserved.
+function background(ctx, promise) {
+  if (ctx?.waitUntil) ctx.waitUntil(promise)
+}
+
+function notFound(message) {
+  const err = new Error(message)
+  err.notFound = true
+  return err
+}
+
+// Serve `key` from the edge cache, else build it with `produce()` and store the
+// result. Only successful responses are cached — `produce()` throwing propagates
+// to the handler's error path uncached, so a transient upstream failure isn't
+// remembered for a week. The stored copy carries no CORS headers (one cache entry
+// is shared by every origin), so they're applied per-request on the way out.
+async function cached(ctx, cors, key, maxAge, produce) {
+  const cacheKey = new Request(`https://cache.scorepulse.invalid/${CACHE_VERSION}/${encodeURIComponent(key)}`)
+  const store = typeof caches !== 'undefined' ? caches.default : null
+
+  const hit = await store?.match(cacheKey)
+  if (hit) return withCors(await hit.text(), cors, maxAge, 'HIT')
+
+  const body = JSON.stringify(await produce())
+  if (store) {
+    background(ctx, store.put(cacheKey, new Response(body, {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': `public, max-age=${maxAge}` },
+    })))
+  }
+  return withCors(body, cors, maxAge, 'MISS')
+}
+
+function withCors(body, cors, maxAge, state) {
+  return new Response(body, {
+    status: 200,
+    headers: {
+      ...cors,
+      'Content-Type': 'application/json',
+      // Let the browser reuse it too, so a repeat lookup never leaves the device.
+      'Cache-Control': `public, max-age=${maxAge}`,
+      'X-Cache': state,
+    },
+  })
 }
 
 function corsHeaders(origin, env) {
@@ -104,7 +179,12 @@ async function search(query) {
 }
 
 async function getCourses(clubId) {
-  const data = await openGcJson(`/clubs/${encodeURIComponent(clubId)}`, 'Lookup')
+  // The USGA session token doesn't depend on the club data, so pay for both round
+  // trips at once instead of back to back.
+  const [data, session] = await Promise.all([
+    openGcJson(`/clubs/${encodeURIComponent(clubId)}`, 'Lookup'),
+    usgaToken().catch(() => ({ token: null, cookie: null })),
+  ])
   const club = data?.data
   if (!club) return []
 
@@ -116,7 +196,7 @@ async function getCourses(clubId) {
   // Look the facility up once in USGA (best-effort).
   let usgaCourses = []
   try {
-    usgaCourses = await usgaSearchFacility(club)
+    usgaCourses = await usgaSearchFacility(club, session)
   } catch {
     usgaCourses = []
   }
@@ -140,29 +220,35 @@ async function getCourses(clubId) {
     picked.push({ course, pars, si: buildStrokeIndexes(course), usgaMatch, group })
   }
 
-  // Resolve tees up front (cached per USGA course) so ranking can compare each
-  // candidate's par total against USGA's authoritative par for the course.
+  // Resolve tees up front so ranking can compare each candidate's par total
+  // against USGA's authoritative par. Every distinct USGA course is scraped
+  // concurrently — a 27-hole facility maps to three, and doing them in sequence
+  // added a full round trip each.
   const teeCache = new Map()
+  await Promise.all(
+    [...new Set(picked.map((p) => p.usgaMatch?.courseID).filter((id) => id != null))].map(
+      async (id) => {
+        try {
+          teeCache.set(id, await usgaTeesFor(id))
+        } catch {
+          teeCache.set(id, [])
+        }
+      }
+    )
+  )
+
   const entries = []
   for (const p of picked) {
     let tees = []
     let teeSource = 'opengc'
     let usgaPar = null
     if (p.usgaMatch) {
-      try {
-        let usgaTees = teeCache.get(p.usgaMatch.courseID)
-        if (!usgaTees) {
-          usgaTees = await usgaTeesFor(p.usgaMatch.courseID)
-          teeCache.set(p.usgaMatch.courseID, usgaTees)
-        }
-        usgaPar = usgaTees.find((t) => Number.isFinite(t.par))?.par ?? null
-        const built = teesFromUsga(usgaTees)
-        if (built.length) {
-          tees = built
-          teeSource = 'usga'
-        }
-      } catch {
-        // fall through to the OpenGC fallback below
+      const usgaTees = teeCache.get(p.usgaMatch.courseID) || []
+      usgaPar = usgaTees.find((t) => Number.isFinite(t.par))?.par ?? null
+      const built = teesFromUsga(usgaTees)
+      if (built.length) {
+        tees = built
+        teeSource = 'usga'
       }
     }
     if (tees.length === 0) tees = buildTees(p.course) // OpenGC fallback
@@ -313,12 +399,13 @@ async function usgaQuery(name, stateCode, token, cookie) {
 }
 
 // Search USGA for the facility (by cleaned name + state) → [{courseID, fullName, city}].
-async function usgaSearchFacility(club) {
+// `session` is the {token, cookie} pair fetched alongside the OpenGC lookup.
+async function usgaSearchFacility(club, session) {
   if ((club.country || '').toLowerCase().indexOf('united states') === -1 && club.country) return []
   const name = cleanName(baseFacilityName(club.name))
   if (!name) return []
 
-  const { token, cookie } = await usgaToken()
+  const { token, cookie } = session || {}
   if (!token || !cookie) return []
 
   // Preferred: narrow the search to the state OpenGC reports.
