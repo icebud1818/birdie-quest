@@ -710,33 +710,44 @@ export default function RoundForm({
                 </div>
               ) : (
                 results.length > 0 && (
-                  <div className="grid" style={{ marginTop: 12 }}>
-                    {results.map((r) => (
-                      <button
-                        type="button"
-                        key={r.externalId}
-                        className="achievement"
-                        onClick={() => pickResult(r)}
-                        disabled={importing != null}
-                        style={{ textAlign: 'left', cursor: importing != null ? 'wait' : 'pointer' }}
-                      >
-                        <div style={{ flex: 1 }}>
-                          <div className="title">{r.name}</div>
-                          {r.location && <div className="desc">{r.location}</div>}
-                        </div>
-                        <span className="muted">
-                          {importing === r.externalId ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <span className="spinner" />
-                              Adding…
-                            </span>
-                          ) : (
-                            'Add'
-                          )}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    {/* A search result is a facility, and one facility can hold
+                        several courses under a name that mentions only one of them
+                        — so the course you played may be inside a listing that
+                        doesn't name it. */}
+                    <div className="muted" style={{ fontSize: '0.85rem', marginTop: 12 }}>
+                      One listing can contain several courses. If the exact course
+                      you played isn't named here, open the closest match at that
+                      facility — you'll be able to pick it on the next step.
+                    </div>
+                    <div className="grid" style={{ marginTop: 10 }}>
+                      {results.map((r) => (
+                        <button
+                          type="button"
+                          key={r.externalId}
+                          className="achievement"
+                          onClick={() => pickResult(r)}
+                          disabled={importing != null}
+                          style={{ textAlign: 'left', cursor: importing != null ? 'wait' : 'pointer' }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div className="title">{r.name}</div>
+                            {r.location && <div className="desc">{r.location}</div>}
+                          </div>
+                          <span className="muted">
+                            {importing === r.externalId ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <span className="spinner" />
+                                Adding…
+                              </span>
+                            ) : (
+                              'Add'
+                            )}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
                 )
               )}
               <div className="muted" style={{ fontSize: '0.85rem', marginTop: 10 }}>
