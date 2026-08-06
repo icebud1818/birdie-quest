@@ -436,12 +436,12 @@ export const ACHIEVEMENTS = [
     check: (round) => round.holes.filter(isBirdie).length >= n,
   })),
   ...[
-    { n: 51, name: 'Getting Rolling' },
-    { n: 48, name: 'Smooth Roller' },
-    { n: 45, name: 'Putt Together' },
-    { n: 42, name: 'Lag Master' },
-    { n: 39, name: 'Deft Touch' },
-    { n: 36, name: 'Putt Perfect' },
+    { n: 45, name: 'Getting Rolling' },
+    { n: 42, name: 'Smooth Roller' },
+    { n: 39, name: 'Putt Together' },
+    { n: 36, name: 'Lag Master' },
+    { n: 33, name: 'Deft Touch' },
+    { n: 30, name: 'Putt Perfect' },
   ].map(({ n, name }) => ({
     id: `putts-${n}`,
     name,
@@ -726,7 +726,7 @@ const ACHIEVEMENT_EMOJI = {
   'pars-3': '🪨', 'pars-6': '🛤️', 'pars-12': '🎵', 'pars-15': '⚙️', 'pars-18': '⭐',
   'gir-3': '🍏', 'gir-6': '🥦', 'gir-9': '🍐', 'gir-12': '🥬', 'gir-15': '🥒',
   'birdies-1': '🐤', 'birdies-2': '🐔', 'birdies-4': '🦉', 'birdies-5': '🦜', 'birdies-6': '🦢',
-  'putts-51': '🎳', 'putts-48': '🛼', 'putts-45': '🧩', 'putts-42': '🧲', 'putts-39': '🪶', 'putts-36': '🕳️',
+  'putts-45': '🎳', 'putts-42': '🛼', 'putts-39': '🧩', 'putts-36': '🧲', 'putts-33': '🪶', 'putts-30': '🕳️',
 
   // Variety
   'play-par-3-course': '⛳',

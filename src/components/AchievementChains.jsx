@@ -1,6 +1,7 @@
 import { ACHIEVEMENTS, iconForAchievement } from '../data/achievements.js'
 import { isCountable, isScramble, isParThreeCourse } from '../utils/rounds.js'
 import { calculateHandicap, formatHandicap } from '../utils/handicap.js'
+import CollapsibleSection from './CollapsibleSection.jsx'
 
 // ---- Helpers for the "current stat" shown on the in-progress tier ----
 const holesOf = (r) => (Array.isArray(r.holes) ? r.holes : [])
@@ -124,7 +125,7 @@ export const CHAINS = [
   {
     key: 'putting',
     label: 'Putting',
-    ids: ['putts-51', 'putts-48', 'putts-45', 'putts-42', 'putts-39', 'putts-36'],
+    ids: ['putts-45', 'putts-42', 'putts-39', 'putts-36', 'putts-33', 'putts-30'],
     stat: (rounds) => {
       let best = null
       for (const r of rounds.filter(isCountable)) {
@@ -161,9 +162,19 @@ export const CHAINED_IDS = new Set(CHAINS.flatMap((c) => c.ids))
 
 const byId = new Map(ACHIEVEMENTS.map((a) => [a.id, a]))
 
-export default function AchievementChains({ earnedSet, rounds = [] }) {
+// `stacked` renders one full-width chain per row, each collapsible and scaled up
+// on desktop (the Achievements page). Left off, chains keep the compact two-up
+// grid with plain headings, which is what Friend Stats uses.
+export default function AchievementChains({ earnedSet, rounds = [], stacked = false }) {
   return (
-    <div className="grid cols-2" style={{ margin: '8px 0 40px', gap: '40px 20px', alignItems: 'start' }}>
+    <div
+      className={stacked ? 'chains-stacked' : 'grid cols-2'}
+      style={
+        stacked
+          ? { margin: '8px 0 0' }
+          : { margin: '8px 0 40px', gap: '40px 20px', alignItems: 'start' }
+      }
+    >
       {CHAINS.map((chain) => {
         const nodes = chain.ids.map((id) => byId.get(id)).filter(Boolean)
         if (nodes.length === 0) return null
@@ -175,6 +186,7 @@ export default function AchievementChains({ earnedSet, rounds = [] }) {
             earnedSet={earnedSet}
             stat={chain.stat}
             rounds={rounds}
+            collapsible={stacked}
           />
         )
       })}
@@ -182,17 +194,13 @@ export default function AchievementChains({ earnedSet, rounds = [] }) {
   )
 }
 
-function Chain({ label, nodes, earnedSet, stat, rounds }) {
+function Chain({ label, nodes, earnedSet, stat, rounds, collapsible }) {
   const currentIdx = nodes.findIndex((a) => !earnedSet.has(a.id))
   const done = nodes.filter((a) => earnedSet.has(a.id)).length
   const statText = currentIdx !== -1 && stat ? stat(rounds) : null
 
-  return (
-    <section>
-      <h2 style={{ margin: '0 0 10px' }}>
-        {label} <span className="count-tag muted">{done}/{nodes.length}</span>
-      </h2>
-      <div className="chain">
+  const body = (
+    <div className="chain" style={{ marginTop: collapsible ? 10 : 0 }}>
         {nodes.map((a, i) => {
           const earned = earnedSet.has(a.id)
           const state = earned ? 'done' : i === currentIdx ? 'current' : 'locked'
@@ -217,7 +225,22 @@ function Chain({ label, nodes, earnedSet, stat, rounds }) {
             </div>
           )
         })}
-      </div>
-    </section>
+    </div>
+  )
+
+  if (!collapsible) {
+    return (
+      <section>
+        <h2 style={{ margin: '0 0 10px' }}>
+          {label} <span className="count-tag muted">{done}/{nodes.length}</span>
+        </h2>
+        {body}
+      </section>
+    )
+  }
+  return (
+    <CollapsibleSection title={label} count={`${done}/${nodes.length}`}>
+      {body}
+    </CollapsibleSection>
   )
 }

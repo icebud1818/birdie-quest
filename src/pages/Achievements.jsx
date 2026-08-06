@@ -1,6 +1,7 @@
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, categoryOf, iconForAchievement } from '../data/achievements.js'
 import { useData } from '../data/DataContext.jsx'
 import AchievementChains, { CHAINED_IDS } from '../components/AchievementChains.jsx'
+import CollapsibleSection from '../components/CollapsibleSection.jsx'
 
 export default function Achievements() {
   const { earnedIds, setManualAchievement, loading, rounds } = useData()
@@ -26,7 +27,7 @@ export default function Achievements() {
         {earnedCount} of {ACHIEVEMENTS.length} earned
       </div>
 
-      <AchievementChains earnedSet={earnedSet} rounds={rounds} />
+      <AchievementChains earnedSet={earnedSet} rounds={rounds} stacked />
 
       {ACHIEVEMENT_CATEGORIES.map((cat) => {
         const items = byCategory.get(cat.id)
@@ -41,16 +42,17 @@ export default function Achievements() {
         const isManual = cat.id === 'manual'
 
         return (
-          <section key={cat.id} style={{ marginBottom: 28 }}>
-            <h2 style={{ margin: '0 0 4px' }}>
-              {cat.label} <span className="count-tag muted">{done}/{items.length}</span>
-            </h2>
+          <CollapsibleSection
+            key={cat.id}
+            title={cat.label}
+            count={`${done}/${items.length}`}
+          >
             {isManual && (
-              <p className="muted" style={{ marginTop: 0 }}>
+              <p className="muted" style={{ marginTop: 4 }}>
                 Feats we can't spot from your scores — check them off as you pull them off.
               </p>
             )}
-            <div className="grid cols-2 plain-grid">
+            <div className="grid plain-grid achievement-list">
               {sorted.map((a) => {
                 const earned = earnedSet.has(a.id)
                 if (isManual) {
@@ -86,7 +88,7 @@ export default function Achievements() {
                 )
               })}
             </div>
-          </section>
+          </CollapsibleSection>
         )
       })}
     </div>

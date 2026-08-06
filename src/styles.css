@@ -408,6 +408,58 @@ tbody tr:hover { background: var(--row-hover); }
   padding: 0;
 }
 .plain-grid { gap: 20px 24px; margin-top: 16px; }
+
+/* Achievements page list: one wide column with roomier rows, rather than the
+   compact two-up grid. Mobile already collapses to one column, so only the
+   desktop side is scaled up. */
+.achievement-list { grid-template-columns: 1fr; }
+@media (min-width: 601px) {
+  .achievement-list { gap: 18px; }
+  .achievement-list .achievement.plain { gap: 18px; align-items: center; }
+  .achievement-list .achievement .badge { width: 56px; height: 56px; font-size: 27px; }
+  .achievement-list .achievement .title { font-size: 1.2rem; }
+  .achievement-list .achievement .desc { font-size: 1rem; }
+  .achievement-list .achievement .status { font-size: 0.85rem; margin-top: 5px; }
+}
+
+/* Stacked chains scale up on desktop alongside the achievement lists. The
+   connector line is flex-sized, so it follows the badge automatically. */
+@media (min-width: 601px) {
+  .chains-stacked .chain-node { gap: 18px; }
+  .chains-stacked .chain-badge { width: 52px; height: 52px; font-size: 25px; }
+  .chains-stacked .chain-body { padding-bottom: 24px; }
+  .chains-stacked .chain-body .title { font-size: 1.2rem; }
+  .chains-stacked .chain-body .desc { font-size: 1rem; }
+  .chains-stacked .chain-status { font-size: 0.85rem; }
+}
+
+/* Collapsible section — the whole heading row is the toggle. */
+.collapsible { margin-bottom: 28px; }
+.collapsible-title { margin: 0; }
+.collapsible-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.collapsible-head:hover:not(:disabled) { background: none; color: var(--accent); }
+.collapsible-chevron {
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.collapsible-chevron.open { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .collapsible-chevron { transition: none; }
+}
 /* Badge styled like a chain node: ringed green when earned, greyscale locked. */
 .achievement .badge {
   width: 42px; height: 42px; border-radius: 50%;

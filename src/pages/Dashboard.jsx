@@ -70,8 +70,15 @@ export default function Dashboard() {
     ? [...rounds].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
     : null
 
+  // Count only earned ids that still have a definition. Retired achievements
+  // stay in Firestore (their docs are the record that you earned them), so
+  // counting the raw list can read as more earned than exist.
+  const earnedCount = useMemo(() => {
+    const earned = new Set(earnedIds)
+    return ACHIEVEMENTS.filter((a) => earned.has(a.id)).length
+  }, [earnedIds])
   const achPct = ACHIEVEMENTS.length
-    ? Math.round((earnedIds.length / ACHIEVEMENTS.length) * 100)
+    ? Math.round((earnedCount / ACHIEVEMENTS.length) * 100)
     : 0
   const name = user?.displayName || user?.email?.split('@')[0]
 
@@ -153,7 +160,7 @@ export default function Dashboard() {
         <div className="card">
           <div className="stat-head">
             <span className="stat-label">Out of bounds / round</span>
-            <span className="icon-badge"><WarnIcon /></span>
+            <span className="icon-badge amber"><WarnIcon /></span>
           </div>
           <div className="stat-value">
             {stats.obPerRound == null ? '—' : stats.obPerRound.toFixed(1)}
@@ -185,7 +192,7 @@ export default function Dashboard() {
         <div className="card">
           <h2 style={{ marginTop: 0 }}>Achievements</h2>
           <div className="stat-value" style={{ fontSize: '1.7rem' }}>
-            {earnedIds.length}
+            {earnedCount}
             <span className="muted" style={{ fontSize: '1rem', fontWeight: 400 }}>
               {' '}/ {ACHIEVEMENTS.length} earned
             </span>
