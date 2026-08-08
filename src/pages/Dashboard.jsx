@@ -54,6 +54,16 @@ export default function Dashboard() {
     }
   }, [rounds])
 
+  // Count only earned ids that still have a definition. Retired achievements
+  // stay in Firestore (their docs are the record that you earned them), so
+  // counting the raw list can read as more earned than exist.
+  // Must stay above the early return below — a hook skipped on one render and
+  // run on the next makes React tear the whole tree down.
+  const earnedCount = useMemo(() => {
+    const earned = new Set(earnedIds)
+    return ACHIEVEMENTS.filter((a) => earned.has(a.id)).length
+  }, [earnedIds])
+
   if (loading) return <div className="container center muted">Loading…</div>
 
   const handicap = calculateHandicap(rounds)
@@ -70,13 +80,6 @@ export default function Dashboard() {
     ? [...rounds].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0]
     : null
 
-  // Count only earned ids that still have a definition. Retired achievements
-  // stay in Firestore (their docs are the record that you earned them), so
-  // counting the raw list can read as more earned than exist.
-  const earnedCount = useMemo(() => {
-    const earned = new Set(earnedIds)
-    return ACHIEVEMENTS.filter((a) => earned.has(a.id)).length
-  }, [earnedIds])
   const achPct = ACHIEVEMENTS.length
     ? Math.round((earnedCount / ACHIEVEMENTS.length) * 100)
     : 0
